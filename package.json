@@ -1,0 +1,21 @@
+{
+  "name": "financer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal finance management PWA",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "build": "pnpm run --parallel --filter @financer/api --filter @financer/web build",
+    "start": "pnpm run --parallel start",
+    "test": "pnpm --filter @financer/api test",
+    "lint": "pnpm run --parallel lint",
+    "typecheck": "pnpm --filter @financer/shared lint && pnpm --filter @financer/api typecheck && pnpm --filter @financer/web typecheck",
+    "clean": "pnpm run --parallel clean"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

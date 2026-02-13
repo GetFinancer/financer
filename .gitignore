@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Database
+*.db
+*.db-journal
+
+# Environment
+.env
+.env.local
+.env.*
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+
+# Misc
+*.tgz
+.turbo
+.turbo/
+.eslintcache
+
+# Backups (created by update.sh)
+backups/
+
+#User data
+data/

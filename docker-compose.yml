@@ -1,0 +1,43 @@
+name: ${COMPOSE_PROJECT_NAME:-financer}
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        API_URL: http://api:4000
+    pull_policy: build
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - API_URL=http://api:4000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - financer-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    pull_policy: build
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      - NODE_ENV=production
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
+      - BASE_DOMAIN=${BASE_DOMAIN:-getfinancer.com}
+      - DATA_DIR=/app/data
+      - ALLOW_AUTO_PROVISION=${ALLOW_AUTO_PROVISION:-false}
+      - DEFAULT_TENANT=${DEFAULT_TENANT:-default}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - financer-network
+
+networks:
+  financer-network:
+    driver: bridge

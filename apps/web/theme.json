@@ -1,0 +1,52 @@
+{
+  "theme": "dark_fintech",
+  "colors": {
+    "background": {
+      "primary": "#0B0B0D",
+      "surface": "#18181B",
+      "surfaceHover": "#1F2933"
+    },
+    "text": {
+      "primary": "#E6E6E6",
+      "secondary": "#9CA3AF",
+      "disabled": "#6B7280",
+      "inverse": "#0B0B0D"
+    },
+    "border": {
+      "default": "#2A2A2E",
+      "focus": "#3B82F6"
+    },
+    "accent": {
+      "electricBlue": {
+        "primary": "#3B82F6",
+        "hover": "#2563EB",
+        "active": "#1D4ED8"
+      },
+      "violet": {
+        "primary": "#8B5CF6",
+        "hover": "#7C3AED",
+        "active": "#6D28D9"
+      }
+    },
+    "status": {
+      "success": {
+        "primary": "#22C55E",
+        "subtle": "#16A34A",
+        "background": "rgba(34, 197, 94, 0.12)"
+      },
+      "warning": {
+        "primary": "#F59E0B"
+      },
+      "error": {
+        "primary": "#EF4444"
+      }
+    },
+    "dataVisualization": {
+      "chartPrimary": "#3B82F6",
+      "chartSecondary": "#8B5CF6",
+      "chartSuccess": "#22C55E",
+      "chartMuted": "#64748B",
+      "gridLines": "#2A2A2E"
+    }
+  }
+}

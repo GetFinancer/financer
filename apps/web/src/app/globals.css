@@ -1,0 +1,323 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Glass Effect Utilities */
+@layer components {
+  .glass-card {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid hsl(var(--glass-border));
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .glass-card:hover {
+    background: hsl(240 6% 12% / 0.7);
+    border-color: hsl(0 0% 100% / 0.15);
+  }
+
+  .light .glass-card:hover {
+    background: hsl(0 0% 100% / 0.85);
+    border-color: hsl(220 13% 80%);
+  }
+
+  .glass-card-elevated {
+    background: hsl(var(--glass-bg-elevated));
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+    border: 1px solid hsl(var(--glass-border));
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-nav {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-color: hsl(var(--glass-border));
+  }
+
+  .glass-glow {
+    box-shadow:
+      0 0 0 1px hsl(var(--glass-border)),
+      0 4px 24px -4px hsl(var(--glow-primary));
+  }
+}
+
+@layer base {
+  :root {
+    /* Dark Fintech Theme - Default */
+    --background: 240 8% 5%;
+    --background-surface: 240 6% 10%;
+    --background-surface-hover: 210 24% 16%;
+
+    --foreground: 0 0% 90%;
+    --foreground-secondary: 218 11% 65%;
+    --foreground-disabled: 220 9% 46%;
+    --foreground-inverse: 240 8% 5%;
+
+    --card: 240 6% 10%;
+    --card-foreground: 0 0% 90%;
+
+    --primary: 217 91% 60%;
+    --primary-hover: 217 83% 53%;
+    --primary-active: 224 76% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 258 90% 66%;
+    --secondary-hover: 262 83% 58%;
+    --secondary-active: 263 70% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 6% 10%;
+    --muted-foreground: 218 11% 65%;
+
+    --accent: 258 90% 66%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 17%;
+    --border-focus: 217 91% 60%;
+    --input: 240 5% 17%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    /* Status Colors */
+    --success: 142 71% 45%;
+    --success-subtle: 142 61% 41%;
+    --success-background: 142 71% 45% / 0.12;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+
+    /* Income/Expense */
+    --income: 142 71% 45%;
+    --expense: 0 84% 60%;
+
+    /* Chart Colors */
+    --chart-primary: 217 91% 60%;
+    --chart-secondary: 258 90% 66%;
+    --chart-success: 142 71% 45%;
+    --chart-muted: 215 16% 47%;
+    --chart-grid: 240 5% 17%;
+
+    /* Glass Effects */
+    --glass-bg: 240 6% 10% / 0.6;
+    --glass-bg-elevated: 240 6% 12% / 0.8;
+    --glass-border: 0 0% 100% / 0.1;
+    --glass-blur: 12px;
+    --glass-blur-heavy: 20px;
+    --glass-blur-light: 8px;
+    --glow-primary: 217 91% 60% / 0.15;
+  }
+
+  /* Mobile: Reduced blur for performance */
+  @media (max-width: 768px) {
+    :root {
+      --glass-blur: 8px;
+      --glass-blur-heavy: 12px;
+      --glass-blur-light: 4px;
+    }
+  }
+
+  /* Light Theme */
+  .light {
+    --background: 0 0% 98%;
+    --background-surface: 0 0% 100%;
+    --background-surface-hover: 220 14% 96%;
+
+    --foreground: 222 47% 11%;
+    --foreground-secondary: 215 16% 47%;
+    --foreground-disabled: 215 20% 65%;
+    --foreground-inverse: 0 0% 100%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 217 91% 55%;
+    --primary-hover: 217 83% 48%;
+    --primary-active: 224 76% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 258 90% 60%;
+    --secondary-hover: 262 83% 52%;
+    --secondary-active: 263 70% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 258 90% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 87%;
+    --border-focus: 217 91% 55%;
+    --input: 220 13% 87%;
+    --ring: 217 91% 55%;
+
+    /* Status Colors */
+    --success: 142 71% 40%;
+    --success-subtle: 142 61% 36%;
+    --success-background: 142 71% 45% / 0.12;
+    --warning: 38 92% 45%;
+    --error: 0 84% 55%;
+
+    /* Income/Expense */
+    --income: 142 71% 40%;
+    --expense: 0 84% 55%;
+
+    /* Chart Colors */
+    --chart-primary: 217 91% 55%;
+    --chart-secondary: 258 90% 60%;
+    --chart-success: 142 71% 40%;
+    --chart-muted: 215 16% 57%;
+    --chart-grid: 220 13% 87%;
+
+    /* Glass Effects - Light mode */
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-bg-elevated: 0 0% 100% / 0.9;
+    --glass-border: 220 13% 87% / 0.8;
+    --glass-blur: 12px;
+    --glass-blur-heavy: 20px;
+    --glass-blur-light: 8px;
+    --glow-primary: 217 91% 55% / 0.1;
+  }
+
+  .light {
+    color-scheme: light;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground-disabled));
+  }
+
+  /* Light mode scrollbar */
+  .light ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  .light ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+  }
+
+  .light ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground-disabled));
+  }
+}
+
+/* Page transition animation */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-fade-in 0.2s ease-out;
+}
+
+/* Focus ring utility */
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* Safe area insets for iPhone/notch devices */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Mobile touch optimizations */
+@layer base {
+  /* Larger touch targets on mobile */
+  @media (max-width: 768px) {
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      min-height: 44px;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      min-height: auto;
+    }
+  }
+
+  /* Prevent text selection on interactive elements */
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Fix for iOS input zoom */
+  @media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
