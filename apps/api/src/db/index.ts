@@ -130,7 +130,8 @@ export async function initSqlModule() {
 
 // Check if a tenant has an existing database
 export function tenantExists(tenant: string): boolean {
-  return fs.existsSync(getTenantDbPath(tenant));
+  const tenantDir = path.join(dataDir, tenant);
+  return fs.existsSync(tenantDir) && fs.statSync(tenantDir).isDirectory();
 }
 
 // List all existing tenants
