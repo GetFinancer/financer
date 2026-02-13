@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-    <a href="https://github.com/getfinancer/financer/actions"><img alt="CI Status" src="https://github.com/getfinancer/financer/actions/workflows/ci.yaml/badge.svg"></a>
+    <a href="https://github.com/getfinancer/financer/actions"><img alt="CI Status" src="https://github.com/getfinancer/financer/actions/workflows/ci.yml/badge.svg"></a>
     <a href="https://github.com/getfinancer/financer/releases"><img alt="Release" src="https://img.shields.io/github/v/release/getfinancer/financer?include_prereleases=false"></a>
     <a href="https://github.com/getfinancer/financer/blob/main/docker-compose.yml"><img alt="Docker Ready" src="https://img.shields.io/badge/docker-ready-blue"></a>
 </p>
