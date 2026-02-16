@@ -11,8 +11,13 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { recurringRouter } from './routes/recurring.js';
 import { creditCardsRouter } from './routes/credit-cards.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { registerRouter } from './routes/register.js';
+import { tenantRouter } from './routes/tenant.js';
+import { billingRouter, billingWebhookHandler } from './routes/billing.js';
+import { adminRouter } from './routes/admin.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { tenantMiddleware } from './middleware/tenant.js';
+import { trialGuard } from './middleware/trialGuard.js';
 
 export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: boolean }) {
   const app = express();
@@ -34,6 +39,15 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     windowMs: 15 * 60 * 1000, // 15 Minuten
     max: 10,
     message: { success: false, error: 'Zu viele Login-Versuche. Bitte warte 15 Minuten.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Rate Limiting - Registration (3 pro IP pro Stunde)
+  const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 Stunde
+    max: 3,
+    message: { success: false, error: 'Too many registrations. Please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
   });
@@ -63,6 +77,10 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     },
     credentials: true,
   }));
+
+  // Stripe webhook needs raw body — mount BEFORE express.json()
+  app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), billingWebhookHandler);
+
   app.use(express.json());
 
   if (!options?.skipRateLimit) {
@@ -87,10 +105,22 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     res.json({ status: 'ok' });
   });
 
+  // Registration endpoints (before tenant middleware - no tenant context needed)
+  if (!options?.skipRateLimit) {
+    app.use('/api/register', registerLimiter);
+  }
+  app.use('/api/register', registerRouter);
+
+  // Admin endpoints (before tenant middleware - no tenant context needed)
+  app.use('/api/admin', adminRouter);
+
   // Tenant middleware - resolves subdomain to database
   if (!options?.skipTenant) {
     app.use('/api', tenantMiddleware);
   }
+
+  // Trial guard - blocks writes for expired tenants
+  app.use('/api', trialGuard);
 
   // Routes
   if (!options?.skipRateLimit) {
@@ -98,6 +128,8 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     app.use('/api/auth/setup', authLimiter);
   }
   app.use('/api/auth', authRouter);
+  app.use('/api/tenant', tenantRouter);
+  app.use('/api/billing', billingRouter);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/categories', categoriesRouter);
   app.use('/api/transactions', transactionsRouter);

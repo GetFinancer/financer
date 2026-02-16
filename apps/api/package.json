@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "reset-password": "tsx src/scripts/reset-password.ts",
-    "create-tenant": "tsx src/scripts/create-tenant.ts"
+    "create-tenant": "tsx src/scripts/create-tenant.ts",
+    "admin": "tsx src/scripts/admin.ts"
   },
   "dependencies": {
     "@financer/shared": "workspace:*",
@@ -26,7 +27,8 @@
     "helmet": "^7.1.0",
     "otplib": "^13.1.1",
     "qrcode": "^1.5.4",
-    "sql.js": "^1.10.0"
+    "sql.js": "^1.10.0",
+    "stripe": "^20.3.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

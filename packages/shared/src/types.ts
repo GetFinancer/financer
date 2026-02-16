@@ -326,6 +326,87 @@ export interface AnalyticsData {
   };
 }
 
+// Tenant & Billing Types
+export type TenantPlan = 'trial' | 'active' | 'expired' | 'cancelled';
+
+export interface TenantStatus {
+  status: TenantPlan;
+  trialEndsAt?: string;
+  daysRemaining?: number;
+  hasPaymentMethod: boolean;
+  legacy?: boolean;
+}
+
+export interface RegisterRequest {
+  tenant: string;
+}
+
+export interface RegisterResponse {
+  tenant: string;
+  url: string;
+}
+
+// Coupon Types
+export type CouponType = 'trial_extension' | 'free_access' | 'discount';
+
+export interface Coupon {
+  code: string;
+  type: CouponType;
+  value: number;
+  stripeCouponId: string | null;
+  maxUses: number;
+  timesUsed: number;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateCouponRequest {
+  code?: string;
+  type: CouponType;
+  value: number;
+  maxUses?: number;
+  expiresAt?: string;
+  stripeCouponId?: string;
+}
+
+export interface RedeemCouponRequest {
+  code: string;
+}
+
+export interface RedeemCouponResponse {
+  success: boolean;
+  error?: string;
+  type?: CouponType;
+  message?: string;
+}
+
+// Admin Types
+export interface AdminLoginRequest {
+  token: string;
+}
+
+export interface AdminStats {
+  total: number;
+  trial: number;
+  active: number;
+  expired: number;
+  cancelled: number;
+}
+
+export interface AdminTenant {
+  name: string;
+  status: TenantPlan;
+  createdAt: string;
+  trialEndsAt: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+}
+
+export interface UpdateTenantRequest {
+  status?: TenantPlan;
+  trialEndsAt?: string;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   success: boolean;

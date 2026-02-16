@@ -340,6 +340,33 @@ const de = {
   confirmValidAmount: 'Bitte einen gültigen Betrag eingeben',
   confirmResetException: 'Anpassung zurücksetzen? Der Standardbetrag wird wiederhergestellt.',
   confirmApplyFuture: 'Neuer Betrag {amount} wird für alle zukünftigen Buchungen ab {date} übernommen. Fortfahren?',
+
+  // Trial & Billing
+  trialBannerDays: 'Testphase: noch {days} Tage',
+  trialBannerLastDay: 'Testphase: letzter Tag',
+  trialBannerExpired: 'Testphase abgelaufen',
+  trialUpgrade: 'Jetzt upgraden',
+  trialExpiredMessage: 'Deine Testphase ist abgelaufen. Upgrade jetzt, um weiterzuarbeiten.',
+  trialExpiredWriteBlocked: 'Aktion nicht möglich — Testphase abgelaufen.',
+
+  // Settings - Billing
+  settingsBillingTitle: 'Abo & Abrechnung',
+  settingsBillingTrial: 'Testphase',
+  settingsBillingTrialDays: 'Noch {days} Tage in der kostenlosen Testphase.',
+  settingsBillingActive: 'Abo aktiv',
+  settingsBillingActiveDescription: 'Dein Abo ist aktiv. Vielen Dank!',
+  settingsBillingExpired: 'Testphase abgelaufen',
+  settingsBillingExpiredDescription: 'Upgrade jetzt, um deine Finanzdaten weiter zu bearbeiten.',
+  settingsBillingUpgrade: 'Jetzt upgraden',
+  settingsBillingManage: 'Abo verwalten',
+  settingsBillingLoading: 'Laden...',
+
+  // Coupons
+  couponTitle: 'Gutscheincode',
+  couponPlaceholder: 'Code eingeben',
+  couponRedeem: 'Einlösen',
+  couponRedeemed: 'Gutschein erfolgreich eingelöst',
+  couponError: 'Gutschein konnte nicht eingelöst werden',
 } as const;
 
 export type TranslationKey = keyof typeof de;
