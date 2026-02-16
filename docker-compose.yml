@@ -32,6 +32,10 @@ services:
       - DATA_DIR=/app/data
       - ALLOW_AUTO_PROVISION=${ALLOW_AUTO_PROVISION:-false}
       - DEFAULT_TENANT=${DEFAULT_TENANT:-default}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
