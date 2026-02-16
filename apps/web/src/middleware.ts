@@ -22,17 +22,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(new URL(LANDING_ROUTES[pathname], request.url));
   }
 
-  // Root path on main domain: show landing page if no session cookie exists
-  if (isMainDomain && pathname === '/') {
-    const hasSession = request.cookies.has('connect.sid');
-    if (!hasSession) {
-      return NextResponse.rewrite(new URL('/landing/index.html', request.url));
-    }
+  // Main domain: redirect all other routes to landing page (no tenant exists)
+  if (isMainDomain) {
+    return NextResponse.rewrite(new URL('/landing/index.html', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/impressum', '/datenschutz'],
+  // Match all routes except static files and API
+  matcher: ['/((?!_next/static|_next/image|landing|favicon.ico|api).*)'],
 };
