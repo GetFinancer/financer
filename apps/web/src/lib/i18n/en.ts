@@ -342,6 +342,33 @@ const en: Record<TranslationKey, string> = {
   confirmValidAmount: 'Please enter a valid amount',
   confirmResetException: 'Reset adjustment? The default amount will be restored.',
   confirmApplyFuture: 'New amount {amount} will be applied to all future transactions from {date}. Continue?',
+
+  // Trial & Billing
+  trialBannerDays: 'Trial: {days} days remaining',
+  trialBannerLastDay: 'Trial: last day',
+  trialBannerExpired: 'Trial expired',
+  trialUpgrade: 'Upgrade now',
+  trialExpiredMessage: 'Your trial has expired. Upgrade now to continue working.',
+  trialExpiredWriteBlocked: 'Action not available — trial expired.',
+
+  // Settings - Billing
+  settingsBillingTitle: 'Subscription & Billing',
+  settingsBillingTrial: 'Trial',
+  settingsBillingTrialDays: '{days} days remaining in your free trial.',
+  settingsBillingActive: 'Subscription active',
+  settingsBillingActiveDescription: 'Your subscription is active. Thank you!',
+  settingsBillingExpired: 'Trial expired',
+  settingsBillingExpiredDescription: 'Upgrade now to continue editing your financial data.',
+  settingsBillingUpgrade: 'Upgrade now',
+  settingsBillingManage: 'Manage subscription',
+  settingsBillingLoading: 'Loading...',
+
+  // Coupons
+  couponTitle: 'Coupon code',
+  couponPlaceholder: 'Enter code',
+  couponRedeem: 'Redeem',
+  couponRedeemed: 'Coupon redeemed successfully',
+  couponError: 'Failed to redeem coupon',
 };
 
 export default en;

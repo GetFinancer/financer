@@ -28,6 +28,7 @@ import type {
   UpdateRecurringExceptionRequest,
   CreditCardBillWithDetails,
   AnalyticsData,
+  TenantStatus,
 } from '@financer/shared';
 
 async function fetchApi<T>(
@@ -282,4 +283,24 @@ export const api = {
     }
     return fetchApi<AnalyticsData>(url);
   },
+
+  // Tenant
+  getTenantStatus: () => fetchApi<TenantStatus>('/tenant/status'),
+
+  // Billing
+  createCheckoutSession: () =>
+    fetchApi<{ url: string }>('/billing/checkout', { method: 'POST' }),
+
+  getBillingStatus: () =>
+    fetchApi<{ status: string; hasSubscription: boolean; legacy?: boolean }>('/billing/status'),
+
+  createPortalSession: () =>
+    fetchApi<{ url: string }>('/billing/portal', { method: 'POST' }),
+
+  // Coupon
+  redeemCoupon: (code: string) =>
+    fetchApi<{ type: string; message: string }>('/tenant/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
 };

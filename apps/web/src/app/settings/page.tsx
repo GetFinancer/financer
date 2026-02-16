@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useTranslation, Locale } from '@/lib/i18n';
+import type { TenantStatus } from '@financer/shared';
 
 interface TwoFactorStatus {
   enabled: boolean;
@@ -50,12 +51,24 @@ export default function SettingsPage() {
   const [regeneratePassword, setRegeneratePassword] = useState('');
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
 
+  // Billing state
+  const [tenantStatus, setTenantStatus] = useState<TenantStatus | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponMessage, setCouponMessage] = useState('');
+  const [couponError, setCouponError] = useState('');
+
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [themeMounted, setThemeMounted] = useState(false);
 
   useEffect(() => {
     load2FAStatus();
+    loadTenantStatus();
     // Load theme from localStorage
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
     if (savedTheme) {
@@ -69,6 +82,60 @@ export default function SettingsPage() {
       });
     });
   }, []);
+
+  async function loadTenantStatus() {
+    try {
+      const status = await api.getTenantStatus();
+      setTenantStatus(status);
+    } catch {
+      // Ignore — legacy tenant or billing not configured
+    }
+  }
+
+  async function handleUpgrade() {
+    setBillingLoading(true);
+    try {
+      const result = await api.createCheckoutSession();
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      console.error('Failed to create checkout session:', error);
+    } finally {
+      setBillingLoading(false);
+    }
+  }
+
+  async function handleRedeemCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    setCouponError('');
+    setCouponMessage('');
+    setCouponLoading(true);
+    try {
+      const result = await api.redeemCoupon(couponCode);
+      setCouponMessage(result.message || t('couponRedeemed'));
+      setCouponCode('');
+      loadTenantStatus();
+    } catch (err: any) {
+      setCouponError(err.message || t('couponError'));
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  async function handleManageBilling() {
+    setBillingLoading(true);
+    try {
+      const result = await api.createPortalSession();
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      console.error('Failed to create portal session:', error);
+    } finally {
+      setBillingLoading(false);
+    }
+  }
 
   function handleThemeChange(newTheme: 'dark' | 'light') {
     setTheme(newTheme);
@@ -604,6 +671,100 @@ export default function SettingsPage() {
             </button>
           </form>
         </section>
+
+        {/* Billing Section */}
+        {tenantStatus && !tenantStatus.legacy && (
+          <section className="glass-card p-6">
+            <h2 className="text-lg font-semibold mb-4">{t('settingsBillingTitle')}</h2>
+
+            {tenantStatus.status === 'trial' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                  <span>{t('settingsBillingTrial')}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settingsBillingTrialDays', { days: String(tenantStatus.daysRemaining ?? 0) })}
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  disabled={billingLoading}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {billingLoading ? t('settingsBillingLoading') : t('settingsBillingUpgrade')}
+                </button>
+              </div>
+            )}
+
+            {tenantStatus.status === 'active' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-income" />
+                  <span>{t('settingsBillingActive')}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settingsBillingActiveDescription')}
+                </p>
+                {tenantStatus.hasPaymentMethod && (
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={billingLoading}
+                    className="px-4 py-2 bg-background border border-border rounded-md hover:bg-background-surface-hover transition-colors text-sm disabled:opacity-50"
+                  >
+                    {billingLoading ? t('settingsBillingLoading') : t('settingsBillingManage')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {(tenantStatus.status === 'expired' || tenantStatus.status === 'cancelled') && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-destructive" />
+                  <span>{t('settingsBillingExpired')}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settingsBillingExpiredDescription')}
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  disabled={billingLoading}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {billingLoading ? t('settingsBillingLoading') : t('settingsBillingUpgrade')}
+                </button>
+              </div>
+            )}
+
+            {searchParams.get('billing') === 'success' && (
+              <p className="text-sm text-income mt-4">{t('settingsBillingActiveDescription')}</p>
+            )}
+
+            {/* Coupon Redemption */}
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-sm font-medium mb-3">{t('couponTitle')}</h3>
+              <form onSubmit={handleRedeemCoupon} className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  className="flex-1 px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  placeholder={t('couponPlaceholder')}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={couponLoading || !couponCode.trim()}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+                >
+                  {couponLoading ? '...' : t('couponRedeem')}
+                </button>
+              </form>
+              {couponMessage && <p className="text-sm text-income mt-2">{couponMessage}</p>}
+              {couponError && <p className="text-sm text-destructive mt-2">{couponError}</p>}
+            </div>
+          </section>
+        )}
 
         {/* App Info Section */}
         <section className="glass-card p-6">

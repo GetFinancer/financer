@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { tenantStorage, initTenantDatabase, tenantExists } from '../db/index.js';
+import { getTenantStatus } from '../db/registry.js';
 
 // Valid tenant name: lowercase alphanumeric + hyphens, 1-63 chars
 const VALID_TENANT = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -35,6 +36,13 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
       if (req.session) {
         req.session.tenant = tenant;
       }
+
+      // Check registry for trial/billing status
+      const registryEntry = getTenantStatus(tenant);
+      if (registryEntry && (registryEntry.status === 'expired' || registryEntry.status === 'cancelled')) {
+        res.locals.tenantExpired = true;
+      }
+
       next();
     });
   }).catch((err) => {
