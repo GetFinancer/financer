@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Category, CategoryType } from '@financer/shared';
-import { api } from '@/lib/api';
+import { api, isTrialExpiredError } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 
 const defaultColors = [
@@ -76,8 +76,12 @@ export default function CategoriesPage() {
 
       resetForm();
       loadCategories();
-    } catch (error) {
-      console.error('Failed to save category:', error);
+    } catch (error: any) {
+      if (isTrialExpiredError(error)) {
+        alert(t('trialExpiredWriteBlocked'));
+      } else {
+        alert(error.message || t('errorSaving'));
+      }
     }
   }
 

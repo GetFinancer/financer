@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Paths that are always allowed, even when trial is expired
+// Paths that are always allowed, even when trial is expired.
+// Note: This middleware is mounted on /api, so req.path has no /api prefix.
 const ALLOWED_PATHS = [
-  '/api/auth',
-  '/api/tenant',
-  '/api/billing',
-  '/api/settings',
+  '/auth',
+  '/tenant',
+  '/billing',
+  '/settings',
 ];
 
 export function trialGuard(req: Request, res: Response, next: NextFunction) {

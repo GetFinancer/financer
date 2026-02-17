@@ -53,10 +53,18 @@ async function fetchApi<T>(
   }
 
   if (!response.ok || !data.success) {
-    throw new Error(data.error || 'An error occurred');
+    const err = new Error(data.error || 'An error occurred');
+    (err as any).code = data.error;
+    (err as any).status = response.status;
+    throw err;
   }
 
   return data.data as T;
+}
+
+/** Check if an error is a trial_expired block from the API */
+export function isTrialExpiredError(error: unknown): boolean {
+  return error instanceof Error && (error as any).code === 'trial_expired';
 }
 
 export const api = {

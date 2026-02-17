@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
-import { api } from '@/lib/api';
+import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 
@@ -15,6 +15,7 @@ export default function TransactionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -94,6 +95,7 @@ export default function TransactionsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSaveError('');
 
     try {
       const payload = {
@@ -114,7 +116,11 @@ export default function TransactionsPage() {
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Failed to save transaction:', error);
+      if (isTrialExpiredError(error)) {
+        setSaveError(t('trialExpiredWriteBlocked'));
+      } else {
+        setSaveError(t('errorSaving'));
+      }
     }
   }
 
@@ -125,7 +131,11 @@ export default function TransactionsPage() {
       await api.deleteTransaction(id);
       loadData();
     } catch (error) {
-      console.error('Failed to delete transaction:', error);
+      if (isTrialExpiredError(error)) {
+        setSaveError(t('trialExpiredWriteBlocked'));
+      } else {
+        setSaveError(t('errorDeleting'));
+      }
     }
   }
 
@@ -327,6 +337,13 @@ export default function TransactionsPage() {
                     placeholder={t('optional')}
                   />
                 </div>
+
+                {/* Error */}
+                {saveError && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                    {saveError}
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <button
