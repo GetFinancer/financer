@@ -9,6 +9,12 @@ const ALLOWED_PATHS = [
 ];
 
 export function trialGuard(req: Request, res: Response, next: NextFunction) {
+  // Self-hosted: no trial system
+  if ((process.env.DEPLOYMENT_MODE || 'selfhosted') === 'selfhosted') {
+    next();
+    return;
+  }
+
   // Only block write operations
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     next();

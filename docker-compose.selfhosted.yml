@@ -1,3 +1,10 @@
+# Minimal self-hosted configuration
+# Usage: docker compose -f docker-compose.selfhosted.yml up -d
+#
+# Before starting, create a .env file with at least:
+#   SESSION_SECRET=<your-secret>    (generate: openssl rand -base64 32)
+#   ADMIN_TOKEN=<your-admin-token>  (generate: openssl rand -base64 32)
+
 name: ${COMPOSE_PROJECT_NAME:-financer}
 
 services:
@@ -27,15 +34,10 @@ services:
       - "${API_PORT:-4000}:4000"
     environment:
       - NODE_ENV=production
-      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-selfhosted}
+      - DEPLOYMENT_MODE=selfhosted
       - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
-      - BASE_DOMAIN=${BASE_DOMAIN:-getfinancer.com}
       - DATA_DIR=/app/data
-      - ALLOW_AUTO_PROVISION=${ALLOW_AUTO_PROVISION:-false}
       - DEFAULT_TENANT=${DEFAULT_TENANT:-default}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
-      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID:-}
       - ADMIN_TOKEN=${ADMIN_TOKEN:-}
     volumes:
       - ./data:/app/data

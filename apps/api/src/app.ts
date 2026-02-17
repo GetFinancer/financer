@@ -21,6 +21,8 @@ import { trialGuard } from './middleware/trialGuard.js';
 
 export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: boolean }) {
   const app = express();
+  const deploymentMode = process.env.DEPLOYMENT_MODE || 'selfhosted';
+  const isCloudhost = deploymentMode === 'cloudhost';
 
   // Trust proxy (wichtig wenn hinter nginx)
   app.set('trust proxy', 1);
@@ -79,7 +81,9 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
   }));
 
   // Stripe webhook needs raw body — mount BEFORE express.json()
-  app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), billingWebhookHandler);
+  if (isCloudhost) {
+    app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), billingWebhookHandler);
+  }
 
   app.use(express.json());
 
@@ -105,11 +109,13 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     res.json({ status: 'ok' });
   });
 
-  // Registration endpoints (before tenant middleware - no tenant context needed)
-  if (!options?.skipRateLimit) {
-    app.use('/api/register', registerLimiter);
+  // Registration endpoints (cloudhost only - before tenant middleware)
+  if (isCloudhost) {
+    if (!options?.skipRateLimit) {
+      app.use('/api/register', registerLimiter);
+    }
+    app.use('/api/register', registerRouter);
   }
-  app.use('/api/register', registerRouter);
 
   // Admin endpoints (before tenant middleware - no tenant context needed)
   app.use('/api/admin', adminRouter);
@@ -129,7 +135,9 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
   }
   app.use('/api/auth', authRouter);
   app.use('/api/tenant', tenantRouter);
-  app.use('/api/billing', billingRouter);
+  if (isCloudhost) {
+    app.use('/api/billing', billingRouter);
+  }
   app.use('/api/accounts', accountsRouter);
   app.use('/api/categories', categoriesRouter);
   app.use('/api/transactions', transactionsRouter);
