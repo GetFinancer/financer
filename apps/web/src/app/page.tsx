@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptionRequest, CreditCardBillWithDetails, TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
-import { api } from '@/lib/api';
+import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 
@@ -249,8 +249,7 @@ export default function Dashboard() {
       loadInstances(false);
       loadDashboard();
     } catch (error) {
-      console.error('Failed to save exception:', error);
-      alert(t('errorSaving'));
+      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
@@ -362,8 +361,7 @@ export default function Dashboard() {
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      console.error('Failed to save transaction:', error);
-      alert(t('errorSaving'));
+      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
@@ -376,8 +374,7 @@ export default function Dashboard() {
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      console.error('Failed to delete transaction:', error);
-      alert(t('errorDeleting'));
+      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
     }
   }
 

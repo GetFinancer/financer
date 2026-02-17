@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AccountWithBalance, AccountType } from '@financer/shared';
-import { api } from '@/lib/api';
+import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 
@@ -107,8 +107,11 @@ export default function AccountsPage() {
       resetForm();
       loadAccounts();
     } catch (error: any) {
-      console.error('Failed to save account:', error);
-      alert(error.message || t('errorSaving'));
+      if (isTrialExpiredError(error)) {
+        alert(t('trialExpiredWriteBlocked'));
+      } else {
+        alert(error.message || t('errorSaving'));
+      }
     }
   }
 
@@ -119,7 +122,11 @@ export default function AccountsPage() {
       await api.deleteAccount(id);
       loadAccounts();
     } catch (error: any) {
-      alert(error.message || t('accountsDeleteFailed'));
+      if (isTrialExpiredError(error)) {
+        alert(t('trialExpiredWriteBlocked'));
+      } else {
+        alert(error.message || t('accountsDeleteFailed'));
+      }
     }
   }
 

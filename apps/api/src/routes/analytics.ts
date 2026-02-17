@@ -88,7 +88,7 @@ analyticsRouter.get('/categories', (req, res) => {
   // Map to CategoryStats with percentages
   const expensesByCategory: CategoryStats[] = expenseRows.map(row => ({
     id: row.id || 0,
-    name: row.name || 'Ohne Kategorie',
+    name: row.name || null,
     color: row.color,
     amount: row.total_amount || 0,
     percentage: totalExpenses > 0 ? Math.round((row.total_amount / totalExpenses) * 100) : 0,
@@ -98,7 +98,7 @@ analyticsRouter.get('/categories', (req, res) => {
 
   const incomeByCategory: CategoryStats[] = incomeRows.map(row => ({
     id: row.id || 0,
-    name: row.name || 'Ohne Kategorie',
+    name: row.name || null,
     color: row.color,
     amount: row.total_amount || 0,
     percentage: totalIncome > 0 ? Math.round((row.total_amount / totalIncome) * 100) : 0,

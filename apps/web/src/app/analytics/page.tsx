@@ -216,7 +216,7 @@ export default function AnalyticsPage() {
           Analytics
           {analytics?.filterCategory && (
             <span className="text-lg font-normal text-muted-foreground ml-2">
-              - {analytics.filterCategory.name}
+              - {analytics.filterCategory.name || t('txNoCategory')}
             </span>
           )}
         </h1>
@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
             <option value="">{t('all')}</option>
             {filterCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name}
+                {cat.name || t('txNoCategory')}
               </option>
             ))}
           </select>
@@ -332,7 +332,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="glass-card p-6">
               <div className="text-sm text-muted-foreground mb-1">
-                {analytics.filterCategory ? `${t('dashboardExpenses')} (${analytics.filterCategory.name})` : t('analyticsTotalExpenses')}
+                {analytics.filterCategory ? `${t('dashboardExpenses')} (${analytics.filterCategory.name || t('txNoCategory')})` : t('analyticsTotalExpenses')}
               </div>
               <div className="text-2xl font-bold text-expense">
                 {formatCurrency(analytics.totalExpenses, 'EUR', numberLocale)}
@@ -351,7 +351,7 @@ export default function AnalyticsPage() {
 
             <div className="glass-card p-6">
               <div className="text-sm text-muted-foreground mb-1">
-                {analytics.filterCategory ? `${t('dashboardIncome')} (${analytics.filterCategory.name})` : t('analyticsTotalIncome')}
+                {analytics.filterCategory ? `${t('dashboardIncome')} (${analytics.filterCategory.name || t('txNoCategory')})` : t('analyticsTotalIncome')}
               </div>
               <div className="text-2xl font-bold text-income">
                 {formatCurrency(analytics.totalIncome, 'EUR', numberLocale)}
@@ -478,7 +478,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">
                         {cat.parentName ? `${cat.parentName} → ` : ''}
-                        {cat.name}
+                        {cat.name || t('txNoCategory')}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {cat.transactionCount !== 1 ? t('analyticsTransactionCountPlural', { count: cat.transactionCount }) : t('analyticsTransactionCount', { count: cat.transactionCount })}
@@ -522,7 +522,7 @@ export default function AnalyticsPage() {
             <div className="glass-card p-6">
               <h2 className="text-lg font-semibold mb-4">
                 {t('analyticsMonthlyDistribution', { year: selectedYear })}
-                {analytics.filterCategory && ` - ${analytics.filterCategory.name}`}
+                {analytics.filterCategory && ` - ${analytics.filterCategory.name || t('txNoCategory')}`}
               </h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
