@@ -106,9 +106,11 @@ function StatsCards({ stats }: { stats: AdminStats }) {
 function TenantTable({
   tenants,
   onRefresh,
+  hosted = false,
 }: {
   tenants: AdminTenant[];
   onRefresh: () => void;
+  hosted?: boolean;
 }) {
   const [editingTenant, setEditingTenant] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState<TenantPlan>('trial');
@@ -158,8 +160,8 @@ function TenantTable({
               <th className="pb-2 pr-4">Name</th>
               <th className="pb-2 pr-4">Status</th>
               <th className="pb-2 pr-4">Created</th>
-              <th className="pb-2 pr-4">Trial Ends</th>
-              <th className="pb-2 pr-4">Stripe</th>
+              {hosted && <th className="pb-2 pr-4">Trial Ends</th>}
+              {hosted && <th className="pb-2 pr-4">Stripe</th>}
               <th className="pb-2">Actions</th>
             </tr>
           </thead>
@@ -175,16 +177,20 @@ function TenantTable({
                 <td className="py-3 pr-4 text-muted-foreground">
                   {new Date(t.createdAt).toLocaleDateString()}
                 </td>
-                <td className="py-3 pr-4 text-muted-foreground">
-                  {t.trialEndsAt ? new Date(t.trialEndsAt).toLocaleDateString() : '—'}
-                </td>
-                <td className="py-3 pr-4">
-                  {t.stripeCustomerId ? (
-                    <span className="text-green-400 text-xs">Connected</span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
-                  )}
-                </td>
+                {hosted && (
+                  <td className="py-3 pr-4 text-muted-foreground">
+                    {t.trialEndsAt ? new Date(t.trialEndsAt).toLocaleDateString() : '—'}
+                  </td>
+                )}
+                {hosted && (
+                  <td className="py-3 pr-4">
+                    {t.stripeCustomerId ? (
+                      <span className="text-green-400 text-xs">Connected</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="py-3">
                   {editingTenant === t.name ? (
                     <div className="flex flex-col gap-2">
@@ -249,7 +255,7 @@ function TenantTable({
             ))}
             {tenants.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                <td colSpan={hosted ? 6 : 4} className="py-8 text-center text-muted-foreground">
                   No tenants registered yet
                 </td>
               </tr>
@@ -469,17 +475,27 @@ function CouponSection({
 }
 
 // ===== Main Admin Dashboard =====
+interface AdminConfig {
+  hosted: boolean;
+  stripe: boolean;
+}
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [config, setConfig] = useState<AdminConfig>({ hosted: false, stripe: false });
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [tenants, setTenants] = useState<AdminTenant[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
 
   useEffect(() => {
-    adminFetch<{ isAdmin: boolean; configured: boolean }>('/status')
-      .then((data) => {
-        setIsLoggedIn(data.isAdmin);
+    Promise.all([
+      adminFetch<{ isAdmin: boolean; configured: boolean }>('/status'),
+      adminFetch<AdminConfig>('/config'),
+    ])
+      .then(([statusData, configData]) => {
+        setIsLoggedIn(statusData.isAdmin);
+        setConfig(configData);
       })
       .catch(() => {})
       .finally(() => setChecking(false));
@@ -490,7 +506,7 @@ export default function AdminPage() {
       const [s, t, c] = await Promise.all([
         adminFetch<AdminStats>('/stats'),
         adminFetch<AdminTenant[]>('/tenants'),
-        adminFetch<Coupon[]>('/coupons'),
+        config.hosted ? adminFetch<Coupon[]>('/coupons') : Promise.resolve([]),
       ]);
       setStats(s);
       setTenants(t);
@@ -498,7 +514,7 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
-  }, []);
+  }, [config.hosted]);
 
   useEffect(() => {
     if (isLoggedIn) loadData();
@@ -524,7 +540,12 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Financer Admin</h1>
+        <div>
+          <h1 className="text-xl font-bold">Financer Admin</h1>
+          {!config.hosted && (
+            <span className="text-xs text-muted-foreground">Self-Hosted Mode</span>
+          )}
+        </div>
         <button
           onClick={handleLogout}
           className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -535,8 +556,8 @@ export default function AdminPage() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {stats && <StatsCards stats={stats} />}
-        <TenantTable tenants={tenants} onRefresh={loadData} />
-        <CouponSection coupons={coupons} onRefresh={loadData} />
+        <TenantTable tenants={tenants} onRefresh={loadData} hosted={config.hosted} />
+        {config.hosted && <CouponSection coupons={coupons} onRefresh={loadData} />}
       </main>
     </div>
   );

@@ -20,6 +20,15 @@ router.post('/login', adminLogin);
 router.post('/logout', adminLogout);
 router.get('/status', adminStatus);
 
+// Config endpoint (public - tells frontend which features are available)
+router.get('/config', (_req, res) => {
+  const deploymentMode = process.env.DEPLOYMENT_MODE || 'selfhosted';
+  res.json({
+    hosted: deploymentMode === 'cloudhost',
+    stripe: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET),
+  });
+});
+
 // Protected endpoints
 router.use(adminAuthMiddleware);
 

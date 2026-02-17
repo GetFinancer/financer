@@ -6,16 +6,23 @@ import { getTenantStatus } from '../db/registry.js';
 const VALID_TENANT = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
-  const hostname = req.hostname;
-  const baseDomain = process.env.BASE_DOMAIN || 'getfinancer.com';
+  const deploymentMode = process.env.DEPLOYMENT_MODE || 'selfhosted';
   let tenant: string;
 
-  if (hostname.endsWith(`.${baseDomain}`)) {
-    // Extract subdomain: roland.getfinancer.com -> roland
-    tenant = hostname.slice(0, -(baseDomain.length + 1));
-  } else {
-    // Local development or direct IP access -> use default tenant
+  if (deploymentMode === 'selfhosted') {
+    // Self-hosted: always use default tenant, no subdomain routing
     tenant = process.env.DEFAULT_TENANT || 'default';
+  } else {
+    const hostname = req.hostname;
+    const baseDomain = process.env.BASE_DOMAIN || 'getfinancer.com';
+
+    if (hostname.endsWith(`.${baseDomain}`)) {
+      // Extract subdomain: roland.getfinancer.com -> roland
+      tenant = hostname.slice(0, -(baseDomain.length + 1));
+    } else {
+      // Local development or direct IP access -> use default tenant
+      tenant = process.env.DEFAULT_TENANT || 'default';
+    }
   }
 
   if (!VALID_TENANT.test(tenant)) {

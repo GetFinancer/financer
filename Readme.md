@@ -54,49 +54,79 @@ financer/
 - **Database**: SQLite (file-based, no separate server needed)s
 - **Auth**: Session-based with bcrypt password hashing
 
+## Deployment Modes
+
+Financer supports two deployment modes controlled by the `DEPLOYMENT_MODE` environment variable:
+
+### Self-Hosted (`selfhosted` — default)
+
+Single-tenant mode for running on your own server. No subdomain routing, no trial system, no Stripe billing. The admin dashboard is available but hides billing-related features.
+
+### Cloud-Hosted (`cloudhost`)
+
+Multi-tenant SaaS mode with subdomain routing (`tenant.yourdomain.tld`), trial system, Stripe billing, and tenant registration.
+
 ## Configuration
 
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `SESSION_SECRET` | - | Secret for session encryption (required in production) |
-| `WEB_PORT` | 3000 | Web server port |
-| `API_PORT` | 4000 | API server port |
+### Core Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DEPLOYMENT_MODE` | No | `selfhosted` | `selfhosted` or `cloudhost` |
+| `SESSION_SECRET` | **Yes** | — | Secret for session encryption. Generate: `openssl rand -base64 32` |
+| `DEFAULT_TENANT` | No | `default` | Tenant name for the database |
+| `ADMIN_TOKEN` | No | — | Token for admin dashboard at `/admin`. Generate: `openssl rand -base64 32` |
+| `WEB_PORT` | No | `3000` | Web server port |
+| `API_PORT` | No | `4000` | API server port |
+
+### Cloud-Host Only Variables
+
+Only needed when `DEPLOYMENT_MODE=cloudhost`:
+
+| Variable | Description |
+|---|---|
+| `BASE_DOMAIN` | Base domain for subdomain routing (e.g. `getfinancer.com`) |
+| `ALLOW_AUTO_PROVISION` | Auto-create tenant databases on first subdomain access |
+| `STRIPE_SECRET_KEY` | Stripe API key for billing |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_PRICE_ID` | Stripe price ID for the subscription product |
 
 ## Data Persistence
 
-All data is stored in a SQLite database file.
+All data is stored in SQLite database files at `./data/<tenant>/financer.db`.
 
 ## Financer Cloud
 
-If you don´t want to self host an instance feel free to visit - [Cloud version](https://getfinancer.com) 
+If you don't want to self-host, visit the [Cloud version](https://getfinancer.com).
 
-## Installation
+## Installation (Self-Hosted)
 
-# Pre Requeistes
-**Docker and Docker Compose must be installed**
+### Prerequisites
+- Docker and Docker Compose
 
-# Installation Process
+### Setup
 
 ```bash
 # Clone Repository
 git clone https://github.com/GetFinancer/financer.git
+cd financer
 
-# Create you .env file
+# Create .env file
 cp .env.example .env
 
-# Create Session Secret
-openssl rand -base64 32
+# Generate secrets
+openssl rand -base64 32  # Use for SESSION_SECRET
+openssl rand -base64 32  # Use for ADMIN_TOKEN
 
-# Edit Parameters and create session secret with 
+# Edit .env with your values
 nano .env
 
-# Create Datafolder and tenant folder. What you choose as tenant name will be than user.yourdomain.com
-mkdir data && cd data && mkdir "your tenant name"
-
-#Start Container
-docker compose up -d
+# Start
+docker compose -f docker-compose.selfhosted.yml up -d
 ```
-Call user.yourdomain.com in your browser
+
+The app will be available at `http://localhost:3000`.
+The admin dashboard is at `http://localhost:3000/admin`.
 
 ### Updating Financer
 
