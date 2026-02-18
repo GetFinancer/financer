@@ -29,7 +29,8 @@ export async function sendPasswordReset(options: {
   if (!transport) throw new Error('SMTP not configured');
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const appUrl = process.env.APP_URL || 'https://app.getfinancer.com';
+  const baseDomain = process.env.BASE_DOMAIN;
+  const appUrl = process.env.APP_URL || (baseDomain ? `https://${baseDomain}` : '');
 
   await transport.sendMail({
     from,
