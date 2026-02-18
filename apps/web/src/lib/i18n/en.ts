@@ -136,6 +136,8 @@ const en: Record<TranslationKey, string> = {
   settingsVersion: 'Version',
   settingsLicense: 'License',
 
+  settingsSupportContact: 'Questions or issues? Contact us at',
+
   // Settings - Session
   settingsSession: 'Session',
   settingsSessionDescription: 'Log out to end the current session.',

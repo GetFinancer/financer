@@ -860,6 +860,15 @@ export default function SettingsPage() {
               {t('navFeedback')}
             </a>
           </div>
+
+          {process.env.DEPLOYMENT_MODE === 'cloudhost' && (
+            <p className="text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
+              {t('settingsSupportContact')}{' '}
+              <a href="mailto:admin@getfinancer.com" className="text-foreground underline underline-offset-2">
+                admin@getfinancer.com
+              </a>
+            </p>
+          )}
         </section>
 
         {/* Logout Section */}

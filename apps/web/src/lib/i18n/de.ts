@@ -134,6 +134,8 @@ const de = {
   settingsVersion: 'Version',
   settingsLicense: 'Lizenz',
 
+  settingsSupportContact: 'Fragen oder Probleme? Kontaktiere uns unter',
+
   // Settings - Session
   settingsSession: 'Sitzung',
   settingsSessionDescription: 'Melde dich ab, um die aktuelle Sitzung zu beenden.',

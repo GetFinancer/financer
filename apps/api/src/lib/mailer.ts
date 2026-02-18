@@ -54,6 +54,11 @@ export async function sendPasswordReset(options: {
       `Temporary password: ${options.tempPassword}`,
       ``,
       `Please log in at ${appUrl} and change your password immediately in Settings.`,
+      ``,
+      `---`,
+      ``,
+      `Fragen? admin@getfinancer.com`,
+      `Questions? admin@getfinancer.com`,
     ].join('\n'),
   });
 }

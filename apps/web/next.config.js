@@ -13,6 +13,7 @@ const nextConfig = {
   reactStrictMode: true,
   env: {
     APP_VERSION: packageJson.version,
+    DEPLOYMENT_MODE: process.env.DEPLOYMENT_MODE || 'selfhosted',
   },
   // Proxy API requests to the backend server
   async rewrites() {
