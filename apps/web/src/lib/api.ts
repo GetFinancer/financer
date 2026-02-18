@@ -311,4 +311,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ code }),
     }),
+
+  // Email
+  getEmail: () =>
+    fetchApi<{ email: string }>('/auth/email'),
+
+  updateEmail: (email: string) =>
+    fetchApi<void>('/auth/email', {
+      method: 'PUT',
+      body: JSON.stringify({ email }),
+    }),
 };

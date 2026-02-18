@@ -80,8 +80,13 @@ function getTenantDbPath(tenant: string): string {
   return path.join(dataDir, tenant, 'financer.db');
 }
 
+// Get a specific tenant's database (for admin operations outside AsyncLocalStorage)
+export function getTenantDatabase(tenant: string): SqlJsDatabase | undefined {
+  return tenantDbs.get(tenant);
+}
+
 // Save a specific tenant's database to disk
-function saveTenantDatabase(tenant: string) {
+export function saveTenantDatabase(tenant: string) {
   const sqlDb = tenantDbs.get(tenant);
   if (!sqlDb) return;
 

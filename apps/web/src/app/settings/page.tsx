@@ -62,6 +62,12 @@ export default function SettingsPage() {
   const [couponMessage, setCouponMessage] = useState('');
   const [couponError, setCouponError] = useState('');
 
+  // Email state
+  const [email, setEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailError, setEmailError] = useState('');
+
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [themeMounted, setThemeMounted] = useState(false);
@@ -69,6 +75,7 @@ export default function SettingsPage() {
   useEffect(() => {
     load2FAStatus();
     loadTenantStatus();
+    loadEmail();
     // Load theme from localStorage
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
     if (savedTheme) {
@@ -89,6 +96,30 @@ export default function SettingsPage() {
       setTenantStatus(status);
     } catch {
       // Ignore — legacy tenant or billing not configured
+    }
+  }
+
+  async function loadEmail() {
+    try {
+      const result = await api.getEmail();
+      setEmail(result.email || '');
+    } catch {
+      // Ignore
+    }
+  }
+
+  async function handleSaveEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailSaving(true);
+    setEmailMessage('');
+    setEmailError('');
+    try {
+      await api.updateEmail(email);
+      setEmailMessage(t('settingsEmailSaved'));
+    } catch (err: any) {
+      setEmailError(err.message || t('settingsEmailError'));
+    } finally {
+      setEmailSaving(false);
     }
   }
 
@@ -604,6 +635,30 @@ export default function SettingsPage() {
           )}
         </section>
 
+        {/* Email Section */}
+        <section className="glass-card p-6">
+          <h2 className="text-lg font-semibold mb-4">{t('settingsEmailTitle')}</h2>
+          <p className="text-sm text-muted-foreground mb-4">{t('settingsEmailDescription')}</p>
+          <form onSubmit={handleSaveEmail} className="flex gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              placeholder={t('settingsEmailPlaceholder')}
+            />
+            <button
+              type="submit"
+              disabled={emailSaving}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+            >
+              {emailSaving ? '...' : t('settingsEmailSave')}
+            </button>
+          </form>
+          {emailMessage && <p className="text-sm text-income mt-2">{emailMessage}</p>}
+          {emailError && <p className="text-sm text-destructive mt-2">{emailError}</p>}
+        </section>
+
         {/* Password Change Section */}
         <section className="glass-card p-6">
           <h2 className="text-lg font-semibold mb-4">{t('settingsChangePassword')}</h2>
@@ -700,12 +755,12 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-income" />
-                  <span>{t('settingsBillingActive')}</span>
+                  <span>{tenantStatus.activatedByCoupon ? t('settingsBillingCouponActive') : t('settingsBillingActive')}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('settingsBillingActiveDescription')}
+                  {tenantStatus.activatedByCoupon ? t('settingsBillingCouponActiveDescription') : t('settingsBillingActiveDescription')}
                 </p>
-                {tenantStatus.hasPaymentMethod && (
+                {tenantStatus.hasPaymentMethod && !tenantStatus.activatedByCoupon && (
                   <button
                     onClick={handleManageBilling}
                     disabled={billingLoading}
@@ -773,7 +828,7 @@ export default function SettingsPage() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('settingsVersion')}</dt>
-              <dd>0.1.0</dd>
+              <dd>{process.env.APP_VERSION || '0.0.0'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('settingsLicense')}</dt>

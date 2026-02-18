@@ -112,6 +112,14 @@ const en: Record<TranslationKey, string> = {
   settings2faGenerating: 'Generating...',
   settings2faGenerateNew: 'Generate new codes',
 
+  // Settings - Email
+  settingsEmailTitle: 'Email Address',
+  settingsEmailDescription: 'Optional — used for password recovery. Without an email address, password reset by an administrator is not possible.',
+  settingsEmailPlaceholder: 'your@email.com',
+  settingsEmailSave: 'Save',
+  settingsEmailSaved: 'Email saved.',
+  settingsEmailError: 'Failed to save email.',
+
   // Settings - Password
   settingsChangePassword: 'Change Password',
   settingsCurrentPassword: 'Current Password',
@@ -357,6 +365,8 @@ const en: Record<TranslationKey, string> = {
   settingsBillingTrialDays: '{days} days remaining in your free trial.',
   settingsBillingActive: 'Subscription active',
   settingsBillingActiveDescription: 'Your subscription is active. Thank you!',
+  settingsBillingCouponActive: 'Access activated',
+  settingsBillingCouponActiveDescription: 'Your access was activated via coupon.',
   settingsBillingExpired: 'Trial expired',
   settingsBillingExpiredDescription: 'Upgrade now to continue editing your financial data.',
   settingsBillingUpgrade: 'Upgrade now',
