@@ -175,6 +175,9 @@ jobs:
     runs-on: self-hosted
     needs: [lint, test, build, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -186,18 +189,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if an open PR from dev to main already exists
           EXISTING_PR=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number')
 
           if [ -n "$EXISTING_PR" ]; then
-            echo "PR #$EXISTING_PR already exists, it will automatically include the latest changes."
+            echo "PR #$EXISTING_PR already exists."
           else
-            gh pr create \
-              --base main \
-              --head dev \
-              --title "Merge dev into main" \
-              --body "$(cat <<'EOF'
-## Automated PR
+            BODY="## Automated PR
 
 All CI checks passed:
 - Lint & Type Check
@@ -205,8 +202,12 @@ All CI checks passed:
 - Build Test
 - Docker Build Test
 
-This PR was automatically created by the CI pipeline.
-EOF
-)"
-            echo "PR created successfully."
+This PR was automatically created by the CI pipeline."
+
+            gh pr create \
+              --base main \
+              --head dev \
+              --title "Merge dev into main" \
+              --body "$BODY"
           fi
+
