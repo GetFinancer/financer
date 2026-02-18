@@ -474,6 +474,155 @@ function CouponSection({
   );
 }
 
+// ===== Diagnose & Cleanup Section =====
+interface DiagnoseResult {
+  dataDir: string;
+  exists: boolean;
+  writable: boolean;
+  registryExists: boolean;
+  tenants: Array<{ name: string; hasDir: boolean; hasDb: boolean }>;
+}
+
+function DiagnoseSection() {
+  const [result, setResult] = useState<DiagnoseResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<Array<{ name: string; action: string }> | null>(null);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  async function runDiagnose() {
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await adminFetch<DiagnoseResult>('/diagnose');
+      setResult(data);
+    } catch (err) {
+      console.error('Diagnose failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runCleanup() {
+    if (!confirm('Remove all orphaned registry entries (tenants without directory)?')) return;
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    try {
+      const data = await adminFetch<{ success: boolean; cleaned: Array<{ name: string; action: string }> }>('/cleanup', { method: 'POST' });
+      setCleanupResult(data.cleaned);
+      runDiagnose();
+    } catch (err) {
+      console.error('Cleanup failed:', err);
+    } finally {
+      setCleanupLoading(false);
+    }
+  }
+
+  const orphanedCount = result?.tenants.filter(t => !t.hasDir).length ?? 0;
+
+  return (
+    <div className="glass-card p-6 mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">System Diagnose</h2>
+        <div className="flex gap-2">
+          {orphanedCount > 0 && (
+            <button
+              onClick={runCleanup}
+              disabled={cleanupLoading}
+              className="px-3 py-1.5 bg-destructive text-destructive-foreground rounded-md text-sm hover:bg-destructive/90 transition-colors disabled:opacity-50"
+            >
+              {cleanupLoading ? 'Cleaning...' : `Cleanup ${orphanedCount} orphaned`}
+            </button>
+          )}
+          <button
+            onClick={runDiagnose}
+            disabled={loading}
+            className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Checking...' : 'Run Diagnose'}
+          </button>
+        </div>
+      </div>
+
+      {result && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="glass-card p-3">
+              <div className="text-xs text-muted-foreground mb-1">Data Dir</div>
+              <div className="text-sm font-mono truncate" title={result.dataDir}>{result.dataDir}</div>
+            </div>
+            <div className="glass-card p-3">
+              <div className="text-xs text-muted-foreground mb-1">Dir Exists</div>
+              <div className={`text-sm font-medium ${result.exists ? 'text-green-400' : 'text-red-400'}`}>
+                {result.exists ? 'Yes' : 'No'}
+              </div>
+            </div>
+            <div className="glass-card p-3">
+              <div className="text-xs text-muted-foreground mb-1">Writable</div>
+              <div className={`text-sm font-medium ${result.writable ? 'text-green-400' : 'text-red-400'}`}>
+                {result.writable ? 'Yes' : 'No'}
+              </div>
+            </div>
+            <div className="glass-card p-3">
+              <div className="text-xs text-muted-foreground mb-1">Registry</div>
+              <div className={`text-sm font-medium ${result.registryExists ? 'text-green-400' : 'text-yellow-400'}`}>
+                {result.registryExists ? 'OK' : 'In-Memory Only'}
+              </div>
+            </div>
+          </div>
+
+          {result.tenants.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="pb-2 pr-4">Tenant</th>
+                    <th className="pb-2 pr-4">Directory</th>
+                    <th className="pb-2">Database</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.tenants.map(t => (
+                    <tr key={t.name} className="border-b border-border/50">
+                      <td className="py-2 pr-4 font-medium">{t.name}</td>
+                      <td className="py-2 pr-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${t.hasDir ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {t.hasDir ? 'OK' : 'MISSING'}
+                        </span>
+                      </td>
+                      <td className="py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${t.hasDb ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                          {t.hasDb ? 'OK' : 'Not yet'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!result.writable && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-red-400">
+              Data directory is not writable! New tenants cannot be created. Check folder permissions on the server.
+            </div>
+          )}
+        </div>
+      )}
+
+      {cleanupResult && cleanupResult.length > 0 && (
+        <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-md text-sm text-green-400">
+          Cleaned up {cleanupResult.length} orphaned tenant(s): {cleanupResult.map(c => c.name).join(', ')}
+        </div>
+      )}
+      {cleanupResult && cleanupResult.length === 0 && (
+        <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-md text-sm text-blue-400">
+          No orphaned tenants found.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== Main Admin Dashboard =====
 interface AdminConfig {
   hosted: boolean;
@@ -556,6 +705,7 @@ export default function AdminPage() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {stats && <StatsCards stats={stats} />}
+        <DiagnoseSection />
         <TenantTable tenants={tenants} onRefresh={loadData} hosted={config.hosted} />
         {config.hosted && <CouponSection coupons={coupons} onRefresh={loadData} />}
       </main>

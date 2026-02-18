@@ -168,10 +168,10 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
 
   # ============================================
-  # Job 5: Merge to main (only on dev push)
+  # Job 5: Create PR to main (only on dev push)
   # ============================================
-  merge-to-main:
-    name: Merge to main
+  create-pr:
+    name: Create PR to main
     runs-on: self-hosted
     needs: [lint, test, build, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -181,24 +181,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure Git
+      - name: Create or update PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          # Check if an open PR from dev to main already exists
+          EXISTING_PR=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number')
 
-      - name: Merge dev into main
-        run: |
-          git checkout main
-          git merge dev --no-edit
-          git push origin main
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists, it will automatically include the latest changes."
+          else
+            gh pr create \
+              --base main \
+              --head dev \
+              --title "Merge dev into main" \
+              --body "$(cat <<'EOF'
+## Automated PR
 
-      - name: Create success comment
-        run: |
-          echo "✅ Successfully merged dev into main!"
-          echo "All tests passed:"
-          echo "  - Lint & Type Check"
-          echo "  - API Tests"
-          echo "  - Build Test"
-          echo "  - Docker Build Test"
+All CI checks passed:
+- Lint & Type Check
+- API Tests
+- Build Test
+- Docker Build Test
+
+This PR was automatically created by the CI pipeline.
+EOF
+)"
+            echo "PR created successfully."
+          fi

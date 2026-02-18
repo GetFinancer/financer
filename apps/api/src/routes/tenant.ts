@@ -73,5 +73,5 @@ tenantRouter.post('/redeem', authMiddleware, (req, res) => {
     message = 'Discount will be applied at checkout';
   }
 
-  res.json({ success: true, type: result.type, message });
+  res.json({ success: true, data: { type: result.type, message } });
 });

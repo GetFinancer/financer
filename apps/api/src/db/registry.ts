@@ -108,14 +108,21 @@ export function registerTenant(name: string): void {
   const db = getDb();
   const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  const stmt = db.prepare('INSERT INTO tenants (name, status, trial_ends_at) VALUES (?, ?, ?)');
-  stmt.run([name, 'trial', trialEndsAt]);
-  stmt.free();
-
-  // Create tenant directory
+  // Create tenant directory FIRST — if this fails, no DB entry is created
   const tenantDir = path.join(dataDir, name);
   if (!fs.existsSync(tenantDir)) {
     fs.mkdirSync(tenantDir, { recursive: true });
+  }
+
+  const stmt = db.prepare('INSERT INTO tenants (name, status, trial_ends_at) VALUES (?, ?, ?)');
+  try {
+    stmt.run([name, 'trial', trialEndsAt]);
+  } catch (err) {
+    // Rollback: remove directory if DB insert fails
+    try { fs.rmdirSync(tenantDir); } catch (_) { /* ignore */ }
+    throw err;
+  } finally {
+    stmt.free();
   }
 
   saveRegistry();
@@ -234,6 +241,64 @@ export function deleteTenant(name: string): void {
     fs.rmSync(tenantDir, { recursive: true, force: true });
   }
   saveRegistry();
+}
+
+// Clean up orphaned tenants (registry entry exists but no directory on disk)
+export function cleanupOrphanedTenants(): Array<{ name: string; action: string }> {
+  const tenants = getRegisteredTenants();
+  const cleaned: Array<{ name: string; action: string }> = [];
+
+  for (const tenant of tenants) {
+    const tenantDir = path.join(dataDir, tenant.name);
+    if (!fs.existsSync(tenantDir)) {
+      // Registry entry without directory — remove from registry
+      const db = getDb();
+      const stmt1 = db.prepare('DELETE FROM coupon_redemptions WHERE tenant_name = ?');
+      stmt1.run([tenant.name]);
+      stmt1.free();
+      const stmt2 = db.prepare('DELETE FROM tenants WHERE name = ?');
+      stmt2.run([tenant.name]);
+      stmt2.free();
+      cleaned.push({ name: tenant.name, action: 'removed_orphaned_registry_entry' });
+    }
+  }
+
+  if (cleaned.length > 0) {
+    saveRegistry();
+  }
+
+  return cleaned;
+}
+
+// Diagnose data directory permissions and state
+export function diagnoseDataDir(): {
+  dataDir: string;
+  exists: boolean;
+  writable: boolean;
+  registryExists: boolean;
+  tenants: Array<{ name: string; hasDir: boolean; hasDb: boolean }>;
+} {
+  const exists = fs.existsSync(dataDir);
+  let writable = false;
+  if (exists) {
+    try {
+      fs.accessSync(dataDir, fs.constants.W_OK);
+      writable = true;
+    } catch (_) { /* not writable */ }
+  }
+
+  const registryExists = fs.existsSync(registryDbPath);
+
+  const tenants = getRegisteredTenants().map(t => {
+    const dir = path.join(dataDir, t.name);
+    return {
+      name: t.name,
+      hasDir: fs.existsSync(dir),
+      hasDb: fs.existsSync(path.join(dir, 'financer.db')),
+    };
+  });
+
+  return { dataDir, exists, writable, registryExists, tenants };
 }
 
 // ===== Coupon Functions =====
