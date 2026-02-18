@@ -186,18 +186,40 @@ jobs:
           fetch-depth: 0
 
       - name: Create or update PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          EXISTING_PR=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: 'main',
+              head: 'dev',
+              state: 'open'
+            });
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR #$EXISTING_PR already exists."
-          else
-            BODY="## Automated PR\n\nAll CI checks passed:\n- Lint & Type Check\n- API Tests\n- Build Test\n- Docker Build Test\n\nThis PR was automatically created by the CI pipeline."
-            gh pr create \
-              --base main \
-              --head dev \
-              --title "Merge dev into main" \
-              --body "$(echo -e "$BODY")" && echo "PR created successfully."
-          fi
+            if (prs.length > 0) {
+              console.log(`PR #${prs[0].number} already exists.`);
+            } else {
+              const body = [
+                '## Automated PR',
+                '',
+                'All CI checks passed:',
+                '- Lint & Type Check',
+                '- API Tests',
+                '- Build Test',
+                '- Docker Build Test',
+                '',
+                'This PR was automatically created by the CI pipeline.'
+              ].join('\n');
+
+              await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Merge dev into main',
+                head: 'dev',
+                base: 'main',
+                body: body
+              });
+              console.log('PR created successfully.');
+            }
