@@ -194,21 +194,10 @@ jobs:
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists."
           else
+            BODY="## Automated PR\n\nAll CI checks passed:\n- Lint & Type Check\n- API Tests\n- Build Test\n- Docker Build Test\n\nThis PR was automatically created by the CI pipeline."
             gh pr create \
               --base main \
               --head dev \
               --title "Merge dev into main" \
-              --body "$(cat <<'EOF'
-## Automated PR
-
-All CI checks passed:
-- Lint & Type Check
-- API Tests
-- Build Test
-- Docker Build Test
-
-This PR was automatically created by the CI pipeline.
-EOF
-)"
-            echo "PR created successfully."
+              --body "$(echo -e "$BODY")" && echo "PR created successfully."
           fi
