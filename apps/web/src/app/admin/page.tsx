@@ -115,6 +115,8 @@ function TenantTable({
   const [editingTenant, setEditingTenant] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState<TenantPlan>('trial');
   const [extendDays, setExtendDays] = useState('30');
+  const [tenantInfo, setTenantInfo] = useState<Record<string, { email: string; has2fa: boolean; hasPassword: boolean; mailerConfigured: boolean }>>({});
+  const [pwResetStatus, setPwResetStatus] = useState<Record<string, string>>({});
 
   async function handleStatusChange(name: string) {
     await adminFetch(`/tenants/${name}`, {
@@ -141,6 +143,45 @@ function TenantTable({
     if (!confirm(`Delete tenant "${name}" and all data? This cannot be undone!`)) return;
     await adminFetch(`/tenants/${name}`, { method: 'DELETE' });
     onRefresh();
+  }
+
+  async function loadTenantInfo(name: string) {
+    try {
+      const info = await adminFetch<{ success: boolean; email: string; has2fa: boolean; hasPassword: boolean; mailerConfigured: boolean }>(`/tenants/${name}/email`);
+      setTenantInfo(prev => ({ ...prev, [name]: { email: info.email, has2fa: info.has2fa, hasPassword: info.hasPassword, mailerConfigured: info.mailerConfigured } }));
+    } catch {
+      // Ignore
+    }
+  }
+
+  async function handleResetPassword(name: string) {
+    const info = tenantInfo[name];
+    if (!info?.email) {
+      alert('Password reset not possible: this tenant has no email address on file.\n\nThe user must add an email address in Settings first.');
+      return;
+    }
+    if (!info?.mailerConfigured) {
+      alert('Password reset not possible: SMTP is not configured on this server.\n\nSet SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
+      return;
+    }
+    if (!confirm(`Send a temporary password to ${info.email}?`)) return;
+    try {
+      const result = await adminFetch<{ success: boolean; emailSentTo: string }>(`/tenants/${name}/reset-password`, { method: 'POST' });
+      setPwResetStatus(prev => ({ ...prev, [name]: `Email sent to ${result.emailSentTo}` }));
+    } catch (err: any) {
+      setPwResetStatus(prev => ({ ...prev, [name]: `Failed: ${err.message}` }));
+    }
+  }
+
+  async function handleReset2FA(name: string) {
+    if (!confirm(`Reset 2FA for "${name}"? The user will need to set up 2FA again.`)) return;
+    try {
+      await adminFetch(`/tenants/${name}/reset-2fa`, { method: 'POST' });
+      alert(`2FA reset for "${name}".`);
+      loadTenantInfo(name);
+    } catch (err: any) {
+      alert(`Failed: ${err.message}`);
+    }
   }
 
   const statusColors: Record<TenantPlan, string> = {
@@ -235,19 +276,52 @@ function TenantTable({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => { setEditingTenant(t.name); setNewStatus(t.status); }}
-                        className="px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t.name)}
-                        className="px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors"
-                      >
-                        Delete
-                      </button>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setEditingTenant(t.name); setNewStatus(t.status); }}
+                          className="px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => { if (!tenantInfo[t.name]) loadTenantInfo(t.name); }}
+                          className="px-2 py-1 text-xs text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                        >
+                          Info
+                        </button>
+                        <button
+                          onClick={() => handleResetPassword(t.name)}
+                          className="px-2 py-1 text-xs text-yellow-400 hover:bg-yellow-500/10 rounded transition-colors"
+                        >
+                          Reset PW
+                        </button>
+                        <button
+                          onClick={() => handleReset2FA(t.name)}
+                          className="px-2 py-1 text-xs text-orange-400 hover:bg-orange-500/10 rounded transition-colors"
+                        >
+                          Reset 2FA
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.name)}
+                          className="px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {tenantInfo[t.name] && (
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div>Email: {tenantInfo[t.name].email || <span className="text-yellow-500">— (PW-Reset nicht möglich)</span>}</div>
+                          <div>2FA: {tenantInfo[t.name].has2fa ? 'Active' : 'Off'}</div>
+                          <div>Password: {tenantInfo[t.name].hasPassword ? 'Set' : 'Not set'}</div>
+                          <div>SMTP: {tenantInfo[t.name].mailerConfigured ? <span className="text-green-400">configured</span> : <span className="text-yellow-500">not configured</span>}</div>
+                        </div>
+                      )}
+                      {pwResetStatus[t.name] && (
+                        <div className="text-xs bg-blue-500/10 border border-blue-500/30 rounded p-2 text-blue-300">
+                          {pwResetStatus[t.name]}
+                        </div>
+                      )}
                     </div>
                   )}
                 </td>

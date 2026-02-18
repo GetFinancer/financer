@@ -335,6 +335,7 @@ export interface TenantStatus {
   daysRemaining?: number;
   hasPaymentMethod: boolean;
   legacy?: boolean;
+  activatedByCoupon?: boolean;
 }
 
 export interface RegisterRequest {

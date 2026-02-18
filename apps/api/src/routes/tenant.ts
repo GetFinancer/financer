@@ -39,6 +39,7 @@ tenantRouter.get('/status', authMiddleware, (req, res) => {
       trialEndsAt: registryEntry.trialEndsAt,
       daysRemaining,
       hasPaymentMethod: !!registryEntry.stripeSubscriptionId,
+      activatedByCoupon: registryEntry.activatedBy === 'coupon',
     },
   });
 });

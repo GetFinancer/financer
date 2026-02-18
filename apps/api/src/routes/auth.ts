@@ -582,3 +582,24 @@ authRouter.post('/2fa/backup-codes/regenerate', authMiddleware, async (req, res)
     data: { backupCodes },
   });
 });
+
+// Email endpoints
+authRouter.get('/email', authMiddleware, (_req, res) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('email');
+  res.json({ success: true, data: { email: row?.value || '' } });
+});
+
+authRouter.put('/email', authMiddleware, (req, res) => {
+  const { email } = req.body;
+  if (email !== undefined && typeof email === 'string') {
+    const trimmed = email.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      res.status(400).json({ success: false, error: 'Invalid email format' });
+      return;
+    }
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('email', trimmed);
+    res.json({ success: true });
+  } else {
+    res.status(400).json({ success: false, error: 'Email is required' });
+  }
+});

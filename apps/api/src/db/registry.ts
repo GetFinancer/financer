@@ -81,6 +81,13 @@ export async function initRegistry() {
     )
   `);
 
+  // Migration: add activated_by column if missing
+  try {
+    registryDb.run(`ALTER TABLE tenants ADD COLUMN activated_by TEXT`);
+  } catch (_) {
+    // Column already exists
+  }
+
   saveRegistry();
 
   // Auto-save
@@ -134,6 +141,7 @@ export function getTenantStatus(name: string): {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   createdAt: string;
+  activatedBy: string | null;
 } | null {
   const db = getDb();
   const stmt = db.prepare('SELECT * FROM tenants WHERE name = ?');
@@ -161,6 +169,7 @@ export function getTenantStatus(name: string): {
       stripeCustomerId: row.stripe_customer_id,
       stripeSubscriptionId: row.stripe_subscription_id,
       createdAt: row.created_at,
+      activatedBy: row.activated_by || null,
     };
   }
 
@@ -451,6 +460,10 @@ export function redeemCoupon(code: string, tenant: string): {
     }
     case 'free_access': {
       updateTenantStatus(tenant, 'active');
+      // Mark as activated by coupon
+      const activateStmt = db.prepare('UPDATE tenants SET activated_by = ? WHERE name = ?');
+      activateStmt.run(['coupon', tenant]);
+      activateStmt.free();
       break;
     }
     case 'discount': {

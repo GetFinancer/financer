@@ -110,6 +110,14 @@ const de = {
   settings2faGenerating: 'Generieren...',
   settings2faGenerateNew: 'Neue Codes generieren',
 
+  // Settings - Email
+  settingsEmailTitle: 'E-Mail-Adresse',
+  settingsEmailDescription: 'Optional — wird für die Passwort-Wiederherstellung verwendet. Ohne hinterlegte E-Mail ist ein Passwort-Reset durch den Administrator nicht möglich.',
+  settingsEmailPlaceholder: 'deine@email.de',
+  settingsEmailSave: 'Speichern',
+  settingsEmailSaved: 'E-Mail gespeichert.',
+  settingsEmailError: 'E-Mail konnte nicht gespeichert werden.',
+
   // Settings - Password
   settingsChangePassword: 'Passwort ändern',
   settingsCurrentPassword: 'Aktuelles Passwort',
@@ -125,6 +133,8 @@ const de = {
   settingsAppInfo: 'App-Informationen',
   settingsVersion: 'Version',
   settingsLicense: 'Lizenz',
+
+  settingsSupportContact: 'Fragen oder Probleme? Kontaktiere uns unter',
 
   // Settings - Session
   settingsSession: 'Sitzung',
@@ -355,6 +365,8 @@ const de = {
   settingsBillingTrialDays: 'Noch {days} Tage in der kostenlosen Testphase.',
   settingsBillingActive: 'Abo aktiv',
   settingsBillingActiveDescription: 'Dein Abo ist aktiv. Vielen Dank!',
+  settingsBillingCouponActive: 'Zugang freigeschaltet',
+  settingsBillingCouponActiveDescription: 'Dein Zugang wurde per Gutschein freigeschaltet.',
   settingsBillingExpired: 'Testphase abgelaufen',
   settingsBillingExpiredDescription: 'Upgrade jetzt, um deine Finanzdaten weiter zu bearbeiten.',
   settingsBillingUpgrade: 'Jetzt upgraden',

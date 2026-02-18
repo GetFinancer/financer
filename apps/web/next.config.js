@@ -5,10 +5,16 @@ const withPWA = require('next-pwa')({
   skipWaiting: true,
 });
 
+const packageJson = require('./package.json');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  env: {
+    APP_VERSION: packageJson.version,
+    DEPLOYMENT_MODE: process.env.DEPLOYMENT_MODE || 'selfhosted',
+  },
   // Proxy API requests to the backend server
   async rewrites() {
     const apiUrl = process.env.API_URL || 'http://localhost:4000';

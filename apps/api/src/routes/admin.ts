@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { sendPasswordReset, isMailerConfigured } from '../lib/mailer.js';
 import { adminAuthMiddleware, adminLogin, adminLogout, adminStatus } from '../middleware/adminAuth.js';
 import {
   getRegisteredTenants,
@@ -13,6 +16,7 @@ import {
   cleanupOrphanedTenants,
   diagnoseDataDir,
 } from '../db/registry.js';
+import { initTenantDatabase, getTenantDatabase, saveTenantDatabase } from '../db/index.js';
 import type { TenantPlan } from '@financer/shared';
 
 const router = Router();
@@ -129,6 +133,113 @@ router.get('/diagnose', (_req, res) => {
 router.post('/cleanup', (_req, res) => {
   const cleaned = cleanupOrphanedTenants();
   res.json({ success: true, cleaned });
+});
+
+// Helper: get a setting from a tenant's database
+function getTenantSetting(tenantName: string, key: string): string | undefined {
+  const sqlDb = getTenantDatabase(tenantName);
+  if (!sqlDb) return undefined;
+  const stmt = sqlDb.prepare('SELECT value FROM settings WHERE key = ?');
+  stmt.bind([key]);
+  if (stmt.step()) {
+    const val = stmt.get()[0] as string;
+    stmt.free();
+    return val;
+  }
+  stmt.free();
+  return undefined;
+}
+
+// Helper: set a setting in a tenant's database
+function setTenantSetting(tenantName: string, key: string, value: string): void {
+  const sqlDb = getTenantDatabase(tenantName);
+  if (!sqlDb) return;
+  sqlDb.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+}
+
+// Helper: delete settings from a tenant's database
+function deleteTenantSettings(tenantName: string, keys: string[]): void {
+  const sqlDb = getTenantDatabase(tenantName);
+  if (!sqlDb) return;
+  const placeholders = keys.map(() => '?').join(',');
+  sqlDb.run(`DELETE FROM settings WHERE key IN (${placeholders})`, keys);
+}
+
+// Get tenant email + status
+router.get('/tenants/:name/email', async (req, res) => {
+  const { name } = req.params;
+  try {
+    await initTenantDatabase(name);
+    const email = getTenantSetting(name, 'email') || '';
+    const has2fa = getTenantSetting(name, 'totp_enabled') === '1';
+    const hasPassword = !!getTenantSetting(name, 'password_hash');
+    res.json({ success: true, email, has2fa, hasPassword, mailerConfigured: isMailerConfigured() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to load tenant' });
+  }
+});
+
+// Reset tenant password — requires email on file + SMTP configured
+router.post('/tenants/:name/reset-password', async (req, res) => {
+  const { name } = req.params;
+  try {
+    await initTenantDatabase(name);
+    const sqlDb = getTenantDatabase(name);
+    if (!sqlDb) {
+      res.status(404).json({ success: false, error: 'Tenant database not found' });
+      return;
+    }
+
+    const email = getTenantSetting(name, 'email') || '';
+    if (!email) {
+      res.status(400).json({ success: false, error: 'No email address on file for this tenant. Password reset is not possible.' });
+      return;
+    }
+
+    if (!isMailerConfigured()) {
+      res.status(503).json({ success: false, error: 'SMTP not configured on this server. Password reset via email is not available.' });
+      return;
+    }
+
+    // Generate temporary password
+    const tempPassword = crypto.randomBytes(6).toString('base64url');
+    const hash = await bcrypt.hash(tempPassword, 10);
+
+    setTenantSetting(name, 'password_hash', hash);
+    saveTenantDatabase(name);
+
+    await sendPasswordReset({ to: email, tenantName: name, tempPassword });
+
+    res.json({ success: true, emailSentTo: email });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to reset password' });
+  }
+});
+
+// Reset tenant 2FA
+router.post('/tenants/:name/reset-2fa', async (req, res) => {
+  const { name } = req.params;
+  try {
+    await initTenantDatabase(name);
+    const sqlDb = getTenantDatabase(name);
+    if (!sqlDb) {
+      res.status(404).json({ success: false, error: 'Tenant database not found' });
+      return;
+    }
+
+    deleteTenantSettings(name, [
+      'totp_secret',
+      'totp_enabled',
+      'totp_backup_codes',
+      'totp_secret_pending',
+      'totp_backup_codes_pending',
+    ]);
+    saveTenantDatabase(name);
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to reset 2FA' });
+  }
 });
 
 function generateCouponCode(): string {
