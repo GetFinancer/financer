@@ -39,6 +39,7 @@ jobs:
       - name: Create release branch
         run: |
           BRANCH="release/v${{ inputs.version }}"
+          git push origin --delete $BRANCH 2>/dev/null || true
           git checkout -b $BRANCH
           echo "BRANCH_NAME=$BRANCH" >> $GITHUB_ENV
 
@@ -55,16 +56,37 @@ jobs:
           git config user.email "actions@github.com"
           git add -A
           git diff --staged --quiet && echo "No changes" || git commit -m "chore: bump version to v${{ inputs.version }}"
-          git push origin $BRANCH_NAME
+          git push origin $BRANCH_NAME --force
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: actions/github-script@v7
         with:
-          branch: ${{ env.BRANCH_NAME }}
-          base: main
-          title: "Release v${{ inputs.version }}"
-          body: "Automated version bump to v${{ inputs.version }}"
-          commit-message: "chore: bump version to v${{ inputs.version }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = process.env.BRANCH_NAME;
+            const version = '${{ inputs.version }}';
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: 'main',
+              head: branch,
+              state: 'open'
+            });
+
+            if (prs.length > 0) {
+              console.log(`PR #${prs[0].number} already exists.`);
+            } else {
+              await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Release v${version}`,
+                head: branch,
+                base: 'main',
+                body: `Automated version bump to v${version}`
+              });
+              console.log('PR created successfully.');
+            }
 
       - name: Create tag
         run: |
