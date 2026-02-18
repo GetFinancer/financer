@@ -10,6 +10,8 @@ import {
   getCoupons,
   deleteCoupon,
   saveRegistrySync,
+  cleanupOrphanedTenants,
+  diagnoseDataDir,
 } from '../db/registry.js';
 import type { TenantPlan } from '@financer/shared';
 
@@ -115,6 +117,18 @@ router.delete('/coupons/:code', (req, res) => {
     return;
   }
   res.json({ success: true });
+});
+
+// Diagnose data directory
+router.get('/diagnose', (_req, res) => {
+  const info = diagnoseDataDir();
+  res.json(info);
+});
+
+// Cleanup orphaned tenants (registry entry without directory)
+router.post('/cleanup', (_req, res) => {
+  const cleaned = cleanupOrphanedTenants();
+  res.json({ success: true, cleaned });
 });
 
 function generateCouponCode(): string {
