@@ -85,6 +85,15 @@ export function getTenantDatabase(tenant: string): SqlJsDatabase | undefined {
   return tenantDbs.get(tenant);
 }
 
+// Remove a tenant's database from in-memory cache (call after deleting a tenant)
+export function unloadTenantDatabase(tenant: string): void {
+  const sqlDb = tenantDbs.get(tenant);
+  if (sqlDb) {
+    sqlDb.close();
+    tenantDbs.delete(tenant);
+  }
+}
+
 // Save a specific tenant's database to disk
 export function saveTenantDatabase(tenant: string) {
   const sqlDb = tenantDbs.get(tenant);

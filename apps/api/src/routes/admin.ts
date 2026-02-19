@@ -16,7 +16,7 @@ import {
   cleanupOrphanedTenants,
   diagnoseDataDir,
 } from '../db/registry.js';
-import { initTenantDatabase, getTenantDatabase, saveTenantDatabase } from '../db/index.js';
+import { initTenantDatabase, getTenantDatabase, saveTenantDatabase, unloadTenantDatabase } from '../db/index.js';
 import type { TenantPlan } from '@financer/shared';
 
 const router = Router();
@@ -73,6 +73,7 @@ router.patch('/tenants/:name', (req, res) => {
 router.delete('/tenants/:name', (req, res) => {
   const { name } = req.params;
   deleteTenant(name);
+  unloadTenantDatabase(name);
   res.json({ success: true });
 });
 

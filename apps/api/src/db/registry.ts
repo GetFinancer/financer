@@ -236,7 +236,20 @@ export function updateTenantTrialEnd(name: string, trialEndsAt: string): void {
 
 export function deleteTenant(name: string): void {
   const db = getDb();
-  // Delete redemptions first
+  // Decrement times_used for each coupon this tenant redeemed
+  const getRedemptionsStmt = db.prepare('SELECT coupon_code FROM coupon_redemptions WHERE tenant_name = ?');
+  getRedemptionsStmt.bind([name]);
+  const redeemedCodes: string[] = [];
+  while (getRedemptionsStmt.step()) {
+    redeemedCodes.push(getRedemptionsStmt.get()[0] as string);
+  }
+  getRedemptionsStmt.free();
+  for (const code of redeemedCodes) {
+    const decrementStmt = db.prepare('UPDATE coupons SET times_used = MAX(0, times_used - 1) WHERE code = ?');
+    decrementStmt.run([code]);
+    decrementStmt.free();
+  }
+  // Delete redemptions
   const stmt1 = db.prepare('DELETE FROM coupon_redemptions WHERE tenant_name = ?');
   stmt1.run([name]);
   stmt1.free();
