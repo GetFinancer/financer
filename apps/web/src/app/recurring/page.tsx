@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { CategoryCombobox } from '@/components/CategoryCombobox';
 import type {
   RecurringTransactionWithDetails,
   Category,
@@ -15,7 +17,7 @@ import { useTranslation } from '@/lib/i18n';
 
 export default function RecurringPage() {
   const { t, numberLocale } = useTranslation();
-
+  const searchParams = useSearchParams();
   const frequencyLabels: Record<RecurringFrequency, string> = {
     daily: t('freqDaily'),
     weekly: t('freqWeekly'),
@@ -65,6 +67,21 @@ export default function RecurringPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle ?name=X&new=1&categoryId=Y redirect
+  useEffect(() => {
+    const name = searchParams.get('name');
+    const isNew = searchParams.get('new') === '1';
+    const catId = searchParams.get('categoryId');
+    if (isNew && name) {
+      setForm((prev) => ({
+        ...prev,
+        name: decodeURIComponent(name),
+        ...(catId ? { categoryId: parseInt(catId) } : {}),
+      }));
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -313,9 +330,9 @@ export default function RecurringPage() {
           <h1 className="text-2xl font-bold">{t('recurringTitle')}</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
           >
-            {t('new')}
+            {t('newRecurring')}
           </button>
         </div>
 
@@ -327,7 +344,7 @@ export default function RecurringPage() {
 
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
             {/* Backdrop */}
             <div
               className="absolute inset-0 bg-black/50"
@@ -431,18 +448,13 @@ export default function RecurringPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">{t('txCategory')}</label>
-                  <select
-                    value={form.categoryId || ''}
-                    onChange={(e) => setForm({ ...form, categoryId: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">{t('txNoCategory')}</option>
-                    {hierarchicalCategories.map(({ category, isChild }) => (
-                      <option key={category.id} value={category.id}>
-                        {isChild ? `  \u2514 ${category.name}` : category.name}
-                      </option>
-                    ))}
-                  </select>
+                  <CategoryCombobox
+                    value={form.categoryId ? String(form.categoryId) : ''}
+                    onChange={(val) => setForm({ ...form, categoryId: val ? parseInt(val) : undefined })}
+                    categories={hierarchicalCategories.map(({ category }) => category)}
+                    transactionType={form.type}
+                    onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+                  />
                 </div>
 
                 <div className={`grid gap-4 ${form.frequency === 'weekly' || ['monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly'].includes(form.frequency) ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -523,7 +535,7 @@ export default function RecurringPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full py-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold text-lg mt-2"
+                  className="w-full py-4 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-semibold text-lg mt-2"
                 >
                   {editingId ? t('save') : t('create')}
                 </button>
@@ -735,7 +747,7 @@ export default function RecurringPage() {
 
         {/* Occurrences Modal */}
         {viewingOccurrences && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={closeOccurrences} />
             <div className="relative w-full md:max-w-lg glass-card-elevated rounded-t-2xl md:rounded-xl p-6 max-h-[90vh] overflow-y-auto safe-area-bottom">
               <div className="md:hidden w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4" />
@@ -913,7 +925,7 @@ export default function RecurringPage() {
                   )}
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold"
+                    className="flex-1 py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-semibold"
                   >
                     {t('save')}
                   </button>

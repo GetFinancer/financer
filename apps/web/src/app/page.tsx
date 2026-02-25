@@ -6,6 +6,8 @@ import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptio
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
+import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
+import { RecurringQuickModal } from '@/components/RecurringQuickModal';
 
 export default function Dashboard() {
   const { t, numberLocale } = useTranslation();
@@ -51,6 +53,8 @@ export default function Dashboard() {
   // Transaction modal state (for both new and edit)
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithDetails | null>(null);
+  const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
+  const autofillTxCategoryRef = useRef<string | null>(null);
   const [txFormData, setTxFormData] = useState({
     accountId: '',
     categoryId: '',
@@ -121,6 +125,15 @@ export default function Dashboard() {
     loadDashboard();
     loadAccountsAndCategories();
   }, []);
+
+  // Listen for global "new transaction" trigger from Topbar CTA
+  useEffect(() => {
+    function handleTopbarCta() {
+      openNewTransaction();
+    }
+    window.addEventListener('financer:new-transaction', handleTopbarCta);
+    return () => window.removeEventListener('financer:new-transaction', handleTopbarCta);
+  }, [accounts]);
 
   useEffect(() => {
     loadInstances();
@@ -365,6 +378,35 @@ export default function Dashboard() {
     }
   }
 
+  async function handleSaveAndContinueTransaction() {
+    try {
+      const payload = {
+        accountId: Number(txFormData.accountId),
+        categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+        amount: Number(txFormData.amount),
+        type: txFormData.type,
+        description: txFormData.description || undefined,
+        date: txFormData.date,
+        transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
+          ? Number(txFormData.transferToAccountId)
+          : undefined,
+      };
+      await api.createTransaction(payload);
+      // Keep form open — reset only amount, description, category
+      setTxFormData(prev => ({
+        ...prev,
+        categoryId: '',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      }));
+      loadRecentTransactions();
+      loadDashboard();
+    } catch (error) {
+      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+    }
+  }
+
   async function handleDeleteTransaction(id: number) {
     if (!confirm(t('transactionsConfirmDelete'))) return;
 
@@ -378,26 +420,65 @@ export default function Dashboard() {
     }
   }
 
-  // Build hierarchical category list for dropdown
-  const getHierarchicalCategories = () => {
-    const typeFiltered = categories.filter(
-      c => c.type === txFormData.type || txFormData.type === 'transfer'
-    );
-    const parents = typeFiltered.filter(c => !c.parentId);
-    const result: Array<{ category: typeof categories[0]; isChild: boolean; parentName?: string }> = [];
+  async function handleCreateTxCategoryFromDesc(name: string) {
+    if (txFormData.type === 'transfer') return;
+    try {
+      const newCat = await api.createCategory({ name, type: txFormData.type });
+      setCategories(prev => [...prev, newCat]);
+      setTxFormData(prev => ({ ...prev, categoryId: String(newCat.id) }));
+    } catch { /* ignore */ }
+  }
 
+  async function openTxRecurringQuick(name: string) {
+    let catId = '';
+    if (txFormData.type !== 'transfer') {
+      const existing = categories.find(c =>
+        c.name.toLowerCase() === name.toLowerCase() && c.type === txFormData.type
+      );
+      const cat = existing ?? await api.createCategory({ name, type: txFormData.type }).catch(() => null);
+      if (cat) {
+        if (!existing) setCategories(prev => [...prev, cat]);
+        catId = String(cat.id);
+      }
+    }
+    setRecurringQuick({ name, categoryId: catId });
+  }
+
+  function handleTxDescriptionChange(val: string) {
+    const descLower = val.trim().toLowerCase();
+    const updates: { description: string; categoryId?: string } = { description: val };
+    const currentIsAutofill = autofillTxCategoryRef.current !== null && txFormData.categoryId === autofillTxCategoryRef.current;
+
+    if (!val.trim()) {
+      if (currentIsAutofill) { updates.categoryId = ''; autofillTxCategoryRef.current = null; }
+    } else if (!txFormData.categoryId || currentIsAutofill) {
+      const exact = hierarchicalTxCategories.find(({ category }) =>
+        category.name.toLowerCase() === descLower
+      );
+      if (exact) {
+        updates.categoryId = String(exact.category.id);
+        autofillTxCategoryRef.current = String(exact.category.id);
+      } else if (currentIsAutofill) {
+        updates.categoryId = '';
+        autofillTxCategoryRef.current = null;
+      }
+    }
+    setTxFormData(prev => ({ ...prev, ...updates }));
+  }
+
+  // Hierarchical category list for transaction modal dropdown
+  const hierarchicalTxCategories = (() => {
+    const typeFiltered = categories.filter(c => c.type === txFormData.type);
+    const parents = typeFiltered.filter(c => !c.parentId);
+    const result: Array<{ category: Category; isChild: boolean }> = [];
     parents.forEach(parent => {
       result.push({ category: parent, isChild: false });
-      const children = typeFiltered.filter(c => c.parentId === parent.id);
-      children.forEach(child => {
-        result.push({ category: child, isChild: true, parentName: parent.name });
+      typeFiltered.filter(c => c.parentId === parent.id).forEach(child => {
+        result.push({ category: child, isChild: true });
       });
     });
-
     return result;
-  };
-
-  const hierarchicalCategories = getHierarchicalCategories();
+  })();
 
   // Swipe-to-dismiss handlers
   function handleTouchStart(e: React.TouchEvent) {
@@ -585,29 +666,41 @@ export default function Dashboard() {
             {/* Unified Card Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {cardVisibility.totalBalance && (
-                <div className="glass-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{t('dashboardTotalBalance')}</p>
-                  <p className={`text-xl font-bold ${summary.totalBalance >= 0 ? '' : 'text-expense'}`}>
+                <div className="kpi-card">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    {t('dashboardTotalBalance')}
+                  </p>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                     {formatCurrency(summary.totalBalance, 'EUR', numberLocale)}
                   </p>
                 </div>
               )}
               {cardVisibility.monthlyIncome && (
-                <div className="glass-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{t('dashboardMonthlyIncome')}</p>
-                  <p className="text-xl font-bold text-income">{formatCurrency(summary.monthlyIncome, 'EUR', numberLocale)}</p>
+                <div className="kpi-card">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    {t('dashboardMonthlyIncome')}
+                  </p>
+                  <p className="text-2xl font-semibold tracking-tight leading-none text-income">
+                    {formatCurrency(summary.monthlyIncome, 'EUR', numberLocale)}
+                  </p>
                 </div>
               )}
               {cardVisibility.monthlyExpenses && (
-                <div className="glass-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{t('dashboardMonthlyExpenses')}</p>
-                  <p className="text-xl font-bold text-expense">{formatCurrency(summary.monthlyExpenses, 'EUR', numberLocale)}</p>
+                <div className="kpi-card">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    {t('dashboardMonthlyExpenses')}
+                  </p>
+                  <p className="text-2xl font-semibold tracking-tight leading-none text-expense">
+                    {formatCurrency(summary.monthlyExpenses, 'EUR', numberLocale)}
+                  </p>
                 </div>
               )}
               {cardVisibility.remainingBudget && (
-                <div className="glass-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{t('dashboardRemaining')}</p>
-                  <p className={`text-xl font-bold ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
+                <div className="kpi-card">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    {t('dashboardRemaining')}
+                  </p>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(remainingBudget, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -615,14 +708,11 @@ export default function Dashboard() {
               {summary.accounts
                 .filter((account) => cardVisibility[`account_${account.id}`] !== false)
                 .map((account) => (
-                  <div key={account.id} className="glass-card p-4">
-                    <p className="text-xs text-muted-foreground truncate mb-1">
+                  <div key={account.id} className="kpi-card">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 truncate">
                       {account.name}
-                      {account.includeInBudget && (
-                        <span className="ml-1 text-primary">•</span>
-                      )}
                     </p>
-                    <p className={`text-xl font-bold ${account.balance >= 0 ? '' : 'text-expense'}`}>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
@@ -634,8 +724,11 @@ export default function Dashboard() {
           <div className="flex justify-center">
             <button
               onClick={openNewTransaction}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              className="flex items-center gap-2 px-6 py-3 nav-item-active rounded-full font-semibold shadow-md hover:opacity-90 active:scale-95 transition-all duration-150"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
               {t('dashboardNewTransaction')}
             </button>
           </div>
@@ -1053,7 +1146,7 @@ export default function Dashboard() {
 
       {/* Edit Instance Modal */}
       {editingInstance && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50"
@@ -1136,7 +1229,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={handleSaveInstanceException}
-                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                  className="flex-1 py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-medium"
                 >
                   {t('save')}
                 </button>
@@ -1160,7 +1253,7 @@ export default function Dashboard() {
 
       {/* Transaction Modal (New/Edit) */}
       {showTransactionModal && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50"
@@ -1258,6 +1351,87 @@ export default function Dashboard() {
                 </select>
               </div>
 
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium mb-2">{t('txDescription')}</label>
+                <input
+                  type="text"
+                  value={txFormData.description}
+                  onChange={(e) => handleTxDescriptionChange(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder={t('optional')}
+                />
+                {/* Smart category / recurring suggestions */}
+                {(() => {
+                  const raw = txFormData.description.trim();
+                  const desc = raw.toLowerCase();
+                  if (!desc || txFormData.type === 'transfer') return null;
+                  // Already auto-filled or manually selected — no chip needed
+                  if (txFormData.categoryId) return null;
+                  if (raw.length < 2) return null;
+
+                  const isRecurring = RECURRING_HINTS.has(desc) ||
+                    (desc.length >= 3 && Array.from(RECURRING_HINTS).some(h => h.startsWith(desc)));
+
+                  if (isRecurring) {
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openTxRecurringQuick(raw)}
+                          className="mt-1.5 flex items-center gap-1.5 text-xs text-secondary/80 hover:text-secondary transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          {t('createAsRecurring')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateTxCategoryFromDesc(raw)}
+                          className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                          </svg>
+                          {t('createAsCategory')} „{raw}"
+                        </button>
+                      </>
+                    );
+                  }
+
+                  // Uncertain semantic match (e.g. "miete" → "Wohnen")
+                  const semantic = findSemanticCategory(desc, hierarchicalTxCategories.map(h => h.category));
+                  if (semantic) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => { setTxFormData(prev => ({ ...prev, categoryId: String(semantic.id) })); autofillTxCategoryRef.current = null; }}
+                        className="mt-1.5 flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        {semantic.name}?
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleCreateTxCategoryFromDesc(raw)}
+                      className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                      {t('createAsCategory')} „{raw}"
+                    </button>
+                  );
+                })()}
+              </div>
+
               {/* Category */}
               {txFormData.type !== 'transfer' && (
                 <div>
@@ -1268,7 +1442,7 @@ export default function Dashboard() {
                     className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">{t('txNoCategory')}</option>
-                    {hierarchicalCategories.map(({ category, isChild, parentName }) => (
+                    {hierarchicalTxCategories.map(({ category, isChild }) => (
                       <option key={category.id} value={category.id}>
                         {isChild ? `  └ ${category.name}` : category.name}
                       </option>
@@ -1311,18 +1485,6 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium mb-2">{t('txDescription')}</label>
-                <input
-                  type="text"
-                  value={txFormData.description}
-                  onChange={(e) => setTxFormData({ ...txFormData, description: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={t('optional')}
-                />
-              </div>
-
               {/* Buttons */}
               <div className="flex gap-3 pt-2">
                 {editingTransaction && (
@@ -1336,17 +1498,41 @@ export default function Dashboard() {
                 )}
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold"
+                  className="flex-1 py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-semibold"
                 >
                   {editingTransaction ? t('save') : t('create')}
                 </button>
               </div>
 
+              {!editingTransaction && (
+                <button
+                  type="button"
+                  onClick={handleSaveAndContinueTransaction}
+                  className="w-full py-3 text-sm text-muted-foreground border border-border rounded-full hover:bg-white/5 transition-colors"
+                >
+                  {t('saveAndAddAnother')}
+                </button>
+              )}
+
               {/* Spacer for bottom padding */}
-              <div style={{ height: '40px' }} />
+              <div style={{ height: '20px' }} />
             </form>
           </div>
         </div>
+      )}
+
+      {recurringQuick && (
+        <RecurringQuickModal
+          initialName={recurringQuick.name}
+          initialType={txFormData.type === 'transfer' ? 'expense' : txFormData.type}
+          initialAmount={txFormData.amount}
+          initialAccountId={txFormData.accountId}
+          initialCategoryId={recurringQuick.categoryId}
+          accounts={accounts}
+          categories={categories}
+          onClose={() => setRecurringQuick(null)}
+          onCreated={() => { setRecurringQuick(null); loadDashboard(); loadRecentTransactions(); }}
+        />
       )}
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { AdminStats, AdminTenant, Coupon, CouponType, TenantPlan } from '@financer/shared';
+import { PasswordInput } from '@/components/PasswordInput';
 
 const API_BASE = '/api/admin';
 
@@ -54,8 +55,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
               <label htmlFor="token" className="block text-sm font-medium mb-2">
                 Admin Token
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 id="token"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
@@ -69,7 +69,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="w-full py-2 px-4 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>

@@ -1,0 +1,8 @@
+# Lokales Entwicklungs-Override – wird von Docker Compose automatisch gemergt.
+# Setzt NODE_ENV=development damit der Session-Cookie kein "Secure"-Flag
+# bekommt und über http://localhost funktioniert.
+# Diese Datei NICHT in Produktion verwenden.
+services:
+  api:
+    environment:
+      - NODE_ENV=development

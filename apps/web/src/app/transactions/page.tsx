@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
+import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
+import { RecurringQuickModal } from '@/components/RecurringQuickModal';
 
 export default function TransactionsPage() {
   const { t, numberLocale } = useTranslation();
+  const router = useRouter();
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -16,7 +20,8 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [saveError, setSaveError] = useState('');
-
+  const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
+  const autofillCategoryRef = useRef<string | null>(null); // tracks auto-filled categoryId
   // Form state
   const [formData, setFormData] = useState({
     accountId: '',
@@ -124,6 +129,36 @@ export default function TransactionsPage() {
     }
   }
 
+  async function handleSubmitAndContinue() {
+    setSaveError('');
+    try {
+      const payload = {
+        accountId: Number(formData.accountId),
+        categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+        amount: Number(formData.amount),
+        type: formData.type,
+        description: formData.description || undefined,
+        date: formData.date,
+      };
+      await api.createTransaction(payload);
+      // Keep form open — reset only amount, description, category
+      setFormData(prev => ({
+        ...prev,
+        categoryId: '',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      }));
+      loadData();
+    } catch (error) {
+      if (isTrialExpiredError(error)) {
+        setSaveError(t('trialExpiredWriteBlocked'));
+      } else {
+        setSaveError(t('errorSaving'));
+      }
+    }
+  }
+
   async function handleDelete(id: number) {
     if (!confirm(t('transactionsConfirmDelete'))) return;
 
@@ -137,6 +172,52 @@ export default function TransactionsPage() {
         setSaveError(t('errorDeleting'));
       }
     }
+  }
+
+  async function handleCreateCategoryFromDesc(name: string) {
+    if (formData.type === 'transfer') return;
+    try {
+      const newCat = await api.createCategory({ name, type: formData.type });
+      setCategories(prev => [...prev, newCat]);
+      setFormData(prev => ({ ...prev, categoryId: String(newCat.id) }));
+    } catch { /* ignore */ }
+  }
+
+  async function openRecurringQuick(name: string) {
+    let catId = '';
+    if (formData.type !== 'transfer') {
+      const existing = categories.find(c =>
+        c.name.toLowerCase() === name.toLowerCase() && c.type === formData.type
+      );
+      const cat = existing ?? await api.createCategory({ name, type: formData.type }).catch(() => null);
+      if (cat) {
+        if (!existing) setCategories(prev => [...prev, cat]);
+        catId = String(cat.id);
+      }
+    }
+    setRecurringQuick({ name, categoryId: catId });
+  }
+
+  function handleDescriptionChange(val: string) {
+    const descLower = val.trim().toLowerCase();
+    const updates: { description: string; categoryId?: string } = { description: val };
+    const currentIsAutofill = autofillCategoryRef.current !== null && formData.categoryId === autofillCategoryRef.current;
+
+    if (!val.trim()) {
+      if (currentIsAutofill) { updates.categoryId = ''; autofillCategoryRef.current = null; }
+    } else if (!formData.categoryId || currentIsAutofill) {
+      const exact = hierarchicalCategories.find(({ category }) =>
+        category.name.toLowerCase() === descLower
+      );
+      if (exact) {
+        updates.categoryId = String(exact.category.id);
+        autofillCategoryRef.current = String(exact.category.id);
+      } else if (currentIsAutofill) {
+        updates.categoryId = '';
+        autofillCategoryRef.current = null;
+      }
+    }
+    setFormData(prev => ({ ...prev, ...updates }));
   }
 
   // Build hierarchical category list for dropdown
@@ -178,9 +259,9 @@ export default function TransactionsPage() {
           <h1 className="text-2xl font-bold">{t('transactionsTitle')}</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
           >
-            {t('new')}
+            {t('newTransaction')}
           </button>
         </div>
 
@@ -205,7 +286,7 @@ export default function TransactionsPage() {
 
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
             {/* Backdrop */}
             <div
               className="absolute inset-0 bg-black/50"
@@ -295,6 +376,87 @@ export default function TransactionsPage() {
                   </select>
                 </div>
 
+                {/* Description — between Account and Category */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">{t('txDescription')}</label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => handleDescriptionChange(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder={t('optional')}
+                  />
+                  {/* Smart category / recurring suggestions */}
+                  {(() => {
+                    const raw = formData.description.trim();
+                    const desc = raw.toLowerCase();
+                    if (!desc || formData.type === 'transfer') return null;
+                    // Already auto-filled — no chip needed
+                    if (formData.categoryId) return null;
+                    if (raw.length < 2) return null;
+
+                    const isRecurring = RECURRING_HINTS.has(desc) ||
+                      (desc.length >= 3 && Array.from(RECURRING_HINTS).some(h => h.startsWith(desc)));
+
+                    if (isRecurring) {
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openRecurringQuick(raw)}
+                            className="mt-1.5 flex items-center gap-1.5 text-xs text-secondary/80 hover:text-secondary transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            {t('createAsRecurring')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCreateCategoryFromDesc(raw)}
+                            className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                            </svg>
+                            {t('createAsCategory')} „{raw}"
+                          </button>
+                        </>
+                      );
+                    }
+
+                    // Uncertain semantic match (e.g. "miete" → "Wohnen")
+                    const semantic = findSemanticCategory(desc, hierarchicalCategories.map(h => h.category));
+                    if (semantic) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => { setFormData(prev => ({ ...prev, categoryId: String(semantic.id) })); autofillCategoryRef.current = null; }}
+                          className="mt-1.5 flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          {semantic.name}?
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleCreateCategoryFromDesc(raw)}
+                        className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                        {t('createAsCategory')} „{raw}"
+                      </button>
+                    );
+                  })()}
+                </div>
+
                 {/* Category */}
                 {formData.type !== 'transfer' && (
                   <div>
@@ -326,18 +488,6 @@ export default function TransactionsPage() {
                   />
                 </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">{t('txDescription')}</label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder={t('optional')}
-                  />
-                </div>
-
                 {/* Error */}
                 {saveError && (
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
@@ -345,15 +495,24 @@ export default function TransactionsPage() {
                   </div>
                 )}
 
-                {/* Submit Button */}
+                {/* Submit Buttons */}
                 <button
                   type="submit"
-                  className="w-full py-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold text-lg"
+                  className="w-full py-4 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-semibold text-lg"
                 >
                   {editingId ? t('update') : t('save')}
                 </button>
+                {!editingId && (
+                  <button
+                    type="button"
+                    onClick={handleSubmitAndContinue}
+                    className="w-full py-3 text-sm text-muted-foreground border border-border rounded-full hover:bg-white/5 transition-colors"
+                  >
+                    {t('saveAndAddAnother')}
+                  </button>
+                )}
                 {/* Spacer for bottom padding */}
-                <div style={{ height: '40px' }} />
+                <div style={{ height: '20px' }} />
               </form>
             </div>
           </div>
@@ -444,6 +603,20 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {recurringQuick && (
+        <RecurringQuickModal
+          initialName={recurringQuick.name}
+          initialType={formData.type === 'transfer' ? 'expense' : formData.type}
+          initialAmount={formData.amount}
+          initialAccountId={formData.accountId}
+          initialCategoryId={recurringQuick.categoryId}
+          accounts={accounts}
+          categories={categories}
+          onClose={() => setRecurringQuick(null)}
+          onCreated={() => { setRecurringQuick(null); loadData(); }}
+        />
+      )}
     </>
   );
 }
