@@ -1,0 +1,27 @@
+# Dependencies – werden im Container neu gebaut
+**/node_modules
+
+# Build-Artefakte
+**/.next
+**/dist
+**/.turbo
+
+# Lokale Daten
+data
+
+# Dev-Konfiguration
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Logs
+**/*.log
+**/npm-debug.log*
+
+# OS
+.DS_Store
+**/.DS_Store

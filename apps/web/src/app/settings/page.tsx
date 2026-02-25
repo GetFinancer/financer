@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useTranslation, Locale } from '@/lib/i18n';
 import type { TenantStatus } from '@financer/shared';
+import { PasswordInput } from '@/components/PasswordInput';
 
 interface TwoFactorStatus {
   enabled: boolean;
@@ -423,7 +424,7 @@ export default function SettingsPage() {
                   <button
                     onClick={handleSetup2FA}
                     disabled={twoFactorLoading}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {twoFactorLoading ? t('loading') : t('settings2faEnable')}
                   </button>
@@ -502,7 +503,7 @@ export default function SettingsPage() {
                     <button
                       type="submit"
                       disabled={twoFactorLoading || verifyCode.length < 6}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                     >
                       {twoFactorLoading ? t('verifyLoading') : t('settings2faActivate')}
                     </button>
@@ -527,8 +528,7 @@ export default function SettingsPage() {
               </p>
               <div>
                 <label className="block text-sm font-medium mb-2">{t('password')}</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={disableForm.password}
                   onChange={(e) => setDisableForm({ ...disableForm, password: e.target.value })}
                   className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
@@ -578,8 +578,7 @@ export default function SettingsPage() {
               </p>
               <div>
                 <label className="block text-sm font-medium mb-2">{t('password')}</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={regeneratePassword}
                   onChange={(e) => setRegeneratePassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
@@ -590,7 +589,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={twoFactorLoading}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {twoFactorLoading ? t('settings2faGenerating') : t('settings2faGenerateNew')}
                 </button>
@@ -650,7 +649,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={emailSaving}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+              className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all text-sm disabled:opacity-50"
             >
               {emailSaving ? '...' : t('settingsEmailSave')}
             </button>
@@ -668,8 +667,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium mb-2">
                 {t('settingsCurrentPassword')}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={passwordForm.currentPassword}
                 onChange={(e) =>
                   setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
@@ -683,8 +681,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium mb-2">
                 {t('settingsNewPassword')}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={passwordForm.newPassword}
                 onChange={(e) =>
                   setPasswordForm({ ...passwordForm, newPassword: e.target.value })
@@ -698,8 +695,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium mb-2">
                 {t('settingsConfirmNewPassword')}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
                   setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
@@ -720,7 +716,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={changingPassword}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
             >
               {changingPassword ? t('settingsChanging') : t('settingsChangePassword')}
             </button>
@@ -744,7 +740,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleUpgrade}
                   disabled={billingLoading}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {billingLoading ? t('settingsBillingLoading') : t('settingsBillingUpgrade')}
                 </button>
@@ -784,7 +780,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleUpgrade}
                   disabled={billingLoading}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {billingLoading ? t('settingsBillingLoading') : t('settingsBillingUpgrade')}
                 </button>
@@ -810,7 +806,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={couponLoading || !couponCode.trim()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
+                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all text-sm disabled:opacity-50"
                 >
                   {couponLoading ? '...' : t('couponRedeem')}
                 </button>
@@ -838,7 +834,7 @@ export default function SettingsPage() {
 
           <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border">
             <a
-              href="https://financedocs.itwtserv.ovh"
+              href="https://docs.getfinancer.com"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-background border border-border rounded-md hover:bg-background-surface-hover transition-colors"
@@ -849,7 +845,7 @@ export default function SettingsPage() {
               {t('navDocumentation')}
             </a>
             <a
-              href="https://bugs.itwtserv.ovh"
+              href="https://financer.getbugio.com"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-background border border-border rounded-md hover:bg-background-surface-hover transition-colors"

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import { PasswordInput } from '@/components/PasswordInput';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -110,8 +111,7 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-medium mb-2">
                   {t('password')}
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -129,7 +129,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="w-full py-2 px-4 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {loading ? t('loginLoading') : t('login')}
               </button>
@@ -164,7 +164,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="w-full py-2 px-4 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {loading ? t('verifyLoading') : t('verify')}
               </button>
