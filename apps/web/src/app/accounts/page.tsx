@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AccountWithBalance, AccountType } from '@financer/shared';
+import { AccountWithBalance, AccountType, CreateAccountRequest } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
@@ -83,20 +83,19 @@ export default function AccountsPage() {
     e.preventDefault();
 
     try {
-      const payload: any = {
+      const payload: CreateAccountRequest = {
         name: formData.name,
-        type: formData.type,
+        type: formData.type as AccountType,
         initialBalance: formData.initialBalance ? Number(formData.initialBalance) : 0,
         includeInBudget: formData.type === 'credit' ? false : formData.includeInBudget,
         isDefault: formData.isDefault,
+        // Credit card specific fields
+        ...(formData.type === 'credit' && {
+          billingDay: Number(formData.billingDay),
+          paymentDay: Number(formData.paymentDay),
+          linkedAccountId: formData.linkedAccountId ? Number(formData.linkedAccountId) : undefined,
+        }),
       };
-
-      // Add credit card specific fields
-      if (formData.type === 'credit') {
-        payload.billingDay = Number(formData.billingDay);
-        payload.paymentDay = Number(formData.paymentDay);
-        payload.linkedAccountId = formData.linkedAccountId ? Number(formData.linkedAccountId) : undefined;
-      }
 
       if (editingId) {
         await api.updateAccount(editingId, payload);
@@ -106,11 +105,11 @@ export default function AccountsPage() {
 
       resetForm();
       loadAccounts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (isTrialExpiredError(error)) {
         alert(t('trialExpiredWriteBlocked'));
       } else {
-        alert(error.message || t('errorSaving'));
+        alert(error instanceof Error ? error.message : t('errorSaving'));
       }
     }
   }
@@ -121,11 +120,11 @@ export default function AccountsPage() {
     try {
       await api.deleteAccount(id);
       loadAccounts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (isTrialExpiredError(error)) {
         alert(t('trialExpiredWriteBlocked'));
       } else {
-        alert(error.message || t('accountsDeleteFailed'));
+        alert(error instanceof Error ? error.message : t('accountsDeleteFailed'));
       }
     }
   }

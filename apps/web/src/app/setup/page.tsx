@@ -7,6 +7,8 @@ import { api } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { PasswordInput } from '@/components/PasswordInput';
 
+const PASSWORD_MIN_LENGTH = 12;
+
 export default function SetupPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -19,7 +21,7 @@ export default function SetupPage() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 4) {
+    if (password.length < PASSWORD_MIN_LENGTH) {
       setError(t('setupPasswordTooShort'));
       return;
     }

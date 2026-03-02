@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { CreateCategorySchema, UpdateCategorySchema } from '../lib/schemas.js';
 import type { Category, CreateCategoryRequest } from '@financer/shared';
 
 export const categoriesRouter = Router();
@@ -51,18 +53,8 @@ categoriesRouter.get('/:id', (req, res) => {
 });
 
 // Create category
-categoriesRouter.post('/', (req, res) => {
+categoriesRouter.post('/', validate(CreateCategorySchema), (req, res) => {
   const { name, type, color, icon, parentId } = req.body as CreateCategoryRequest;
-
-  if (!name || !type) {
-    res.status(400).json({ success: false, error: 'Name und Typ sind erforderlich' });
-    return;
-  }
-
-  if (!['income', 'expense'].includes(type)) {
-    res.status(400).json({ success: false, error: 'Ungültiger Kategorietyp' });
-    return;
-  }
 
   const result = db.prepare(`
     INSERT INTO categories (name, type, color, icon, parent_id)
@@ -75,7 +67,7 @@ categoriesRouter.post('/', (req, res) => {
 });
 
 // Update category
-categoriesRouter.put('/:id', (req, res, next) => {
+categoriesRouter.put('/:id', validate(UpdateCategorySchema), (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, type, color, icon, parentId } = req.body;

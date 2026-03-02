@@ -16,6 +16,7 @@
  *   npm run admin -- --delete-coupon CODE
  */
 
+import crypto from 'crypto';
 import {
   initRegistry,
   getRegisteredTenants,
@@ -28,6 +29,7 @@ import {
   deleteCoupon as removeCoupon,
 } from '../db/registry.js';
 import type { TenantPlan } from '@financer/shared';
+import { SECURITY } from '../config/constants.js';
 
 const args = process.argv.slice(2);
 
@@ -189,9 +191,10 @@ Usage:
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(SECURITY.COUPON_CODE_LENGTH);
   let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < SECURITY.COUPON_CODE_LENGTH; i++) {
+    code += chars[bytes[i] % chars.length];
   }
   return code;
 }

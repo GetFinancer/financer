@@ -81,7 +81,7 @@ const en: Record<TranslationKey, string> = {
   setupButton: 'Set up Financer',
   setupLoading: 'Setting up...',
   setupFailed: 'Setup failed. Please try again.',
-  setupPasswordTooShort: 'Password must be at least 4 characters',
+  setupPasswordTooShort: 'Password must be at least 12 characters',
   setupPasswordMismatch: 'Passwords do not match',
 
   // Settings
@@ -139,7 +139,7 @@ const en: Record<TranslationKey, string> = {
   settingsConfirmNewPassword: 'Confirm New Password',
   settingsPasswordChanged: 'Password changed successfully',
   settingsPasswordChangeFailed: 'Could not change password',
-  settingsPasswordTooShort: 'New password must be at least 4 characters',
+  settingsPasswordTooShort: 'New password must be at least 12 characters',
   settingsPasswordMismatch: 'Passwords do not match',
   settingsChanging: 'Changing...',
 

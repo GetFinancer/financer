@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { CreateTransactionSchema, UpdateTransactionSchema } from '../lib/schemas.js';
 import type { TransactionWithDetails, CreateTransactionRequest } from '@financer/shared';
 
 export const transactionsRouter = Router();
@@ -124,7 +126,7 @@ transactionsRouter.get('/:id', (req, res) => {
 });
 
 // Create transaction
-transactionsRouter.post('/', (req, res) => {
+transactionsRouter.post('/', validate(CreateTransactionSchema), (req, res) => {
   const {
     accountId,
     categoryId,
@@ -136,24 +138,8 @@ transactionsRouter.post('/', (req, res) => {
     transferToAccountId,
   } = req.body as CreateTransactionRequest;
 
-  if (!accountId || amount === undefined || !type || !date) {
-    res.status(400).json({
-      success: false,
-      error: 'Konto, Betrag, Typ und Datum sind erforderlich',
-    });
-    return;
-  }
-
-  if (!['income', 'expense', 'transfer'].includes(type)) {
-    res.status(400).json({ success: false, error: 'Ungültiger Transaktionstyp' });
-    return;
-  }
-
   if (type === 'transfer' && !transferToAccountId) {
-    res.status(400).json({
-      success: false,
-      error: 'Zielkonto für Überweisung erforderlich',
-    });
+    res.status(400).json({ success: false, error: 'Zielkonto für Überweisung erforderlich' });
     return;
   }
 
@@ -184,7 +170,7 @@ transactionsRouter.post('/', (req, res) => {
 });
 
 // Update transaction
-transactionsRouter.put('/:id', (req, res) => {
+transactionsRouter.put('/:id', validate(UpdateTransactionSchema), (req, res) => {
   const { id } = req.params;
   const {
     accountId,

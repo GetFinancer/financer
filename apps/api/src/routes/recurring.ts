@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import {
+  CreateRecurringSchema,
+  UpdateRecurringSchema,
+  RecurringAmountFromDateSchema,
+  CreateRecurringExceptionSchema,
+  UpdateRecurringExceptionSchema,
+} from '../lib/schemas.js';
 import type {
   RecurringTransactionWithDetails,
   RecurringInstanceWithDetails,
@@ -97,7 +105,7 @@ recurringRouter.get('/:id', (req, res) => {
 });
 
 // Create recurring transaction
-recurringRouter.post('/', (req, res) => {
+recurringRouter.post('/', validate(CreateRecurringSchema), (req, res) => {
   const {
     name,
     accountId,
@@ -110,25 +118,6 @@ recurringRouter.post('/', (req, res) => {
     startDate,
     endDate,
   } = req.body as CreateRecurringTransactionRequest;
-
-  if (!name || amount === undefined || !type || !frequency || !startDate) {
-    res.status(400).json({
-      success: false,
-      error: 'Name, Betrag, Typ, Häufigkeit und Startdatum sind erforderlich',
-    });
-    return;
-  }
-
-  if (!['income', 'expense'].includes(type)) {
-    res.status(400).json({ success: false, error: 'Ungültiger Typ' });
-    return;
-  }
-
-  const validFrequencies = ['daily', 'weekly', 'monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly'];
-  if (!validFrequencies.includes(frequency)) {
-    res.status(400).json({ success: false, error: 'Ungültige Häufigkeit' });
-    return;
-  }
 
   // Validate day_of_week for weekly
   if (frequency === 'weekly' && (dayOfWeek === undefined || dayOfWeek < 0 || dayOfWeek > 6)) {
@@ -166,7 +155,7 @@ recurringRouter.post('/', (req, res) => {
 });
 
 // Update recurring transaction
-recurringRouter.put('/:id', (req, res) => {
+recurringRouter.put('/:id', validate(UpdateRecurringSchema), (req, res) => {
   const { id } = req.params;
   const {
     name,
@@ -242,14 +231,9 @@ recurringRouter.delete('/:id', (req, res) => {
 });
 
 // Update amount for future instances (changes base amount and clears future exceptions)
-recurringRouter.patch('/:id/amount-from-date', (req, res) => {
+recurringRouter.patch('/:id/amount-from-date', validate(RecurringAmountFromDateSchema), (req, res) => {
   const { id } = req.params;
-  const { amount, fromDate } = req.body;
-
-  if (amount === undefined || !fromDate) {
-    res.status(400).json({ success: false, error: 'Betrag und Datum erforderlich' });
-    return;
-  }
+  const { amount, fromDate } = req.body as { amount: number; fromDate: string };
 
   const existing = db.prepare('SELECT * FROM recurring_transactions WHERE id = ?').get(id);
   if (!existing) {
@@ -479,14 +463,9 @@ recurringRouter.get('/:id/exceptions', (req, res) => {
 });
 
 // Create exception for a specific date
-recurringRouter.post('/:id/exceptions', (req, res) => {
+recurringRouter.post('/:id/exceptions', validate(CreateRecurringExceptionSchema), (req, res) => {
   const { id } = req.params;
   const { date, amount, note, skip } = req.body as CreateRecurringExceptionRequest;
-
-  if (!date) {
-    res.status(400).json({ success: false, error: 'Datum ist erforderlich' });
-    return;
-  }
 
   const recurring = db.prepare('SELECT * FROM recurring_transactions WHERE id = ?').get(id);
   if (!recurring) {
@@ -525,7 +504,7 @@ recurringRouter.post('/:id/exceptions', (req, res) => {
 });
 
 // Update exception
-recurringRouter.put('/:id/exceptions/:exceptionId', (req, res) => {
+recurringRouter.put('/:id/exceptions/:exceptionId', validate(UpdateRecurringExceptionSchema), (req, res) => {
   const { id, exceptionId } = req.params;
   const { amount, note, skip } = req.body as UpdateRecurringExceptionRequest;
 
