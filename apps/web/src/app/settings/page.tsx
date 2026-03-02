@@ -58,6 +58,7 @@ export default function SettingsPage() {
   // Billing state
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | null>(null);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState('');
   const searchParams = useSearchParams();
 
   // Coupon state
@@ -134,13 +135,14 @@ export default function SettingsPage() {
 
   async function handleUpgrade() {
     setBillingLoading(true);
+    setBillingError('');
     try {
       const result = await api.createCheckoutSession();
       if (result.url) {
         window.location.href = result.url;
       }
-    } catch (error) {
-      console.error('Failed to create checkout session:', error);
+    } catch (err: any) {
+      setBillingError(err.message || t('settingsBillingError'));
     } finally {
       setBillingLoading(false);
     }
@@ -797,6 +799,10 @@ export default function SettingsPage() {
 
             {searchParams.get('billing') === 'success' && (
               <p className="text-sm text-income mt-4">{t('settingsBillingActiveDescription')}</p>
+            )}
+
+            {billingError && (
+              <p className="text-sm text-destructive mt-4">{billingError}</p>
             )}
 
             {/* Coupon Redemption */}

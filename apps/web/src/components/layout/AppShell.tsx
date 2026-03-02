@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
-import { LanguageProvider } from '@/lib/i18n';
+import { LanguageProvider, useTranslation } from '@/lib/i18n';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
@@ -14,6 +14,26 @@ import type { TenantStatus } from '@financer/shared';
 
 interface AppShellProps {
   children: React.ReactNode;
+}
+
+function PasswordWarningBanner({ onDismiss }: { onDismiss: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 bg-yellow-500/15 border-b border-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-sm">
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <span className="flex-1">{t('passwordWarningBanner')}</span>
+      <a href="/settings" className="font-semibold underline underline-offset-2 hover:no-underline whitespace-nowrap">
+        {t('passwordWarningCta')}
+      </a>
+      <button onClick={onDismiss} className="ml-1 text-yellow-500 hover:text-yellow-300 transition-colors" aria-label="Dismiss">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 // Pages that don't need the app shell
@@ -28,6 +48,7 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | null>(null);
   const [releaseNotesVersion, setReleaseNotesVersion] = useState<string | null>(null);
+  const [showPasswordWarning, setShowPasswordWarning] = useState(false);
 
   const isAuthPage = authPages.includes(pathname);
 
@@ -47,6 +68,10 @@ export function AppShell({ children }: AppShellProps) {
         }
 
         setAuthenticated(true);
+
+        if (status.passwordNeedsUpdate) {
+          setShowPasswordWarning(true);
+        }
 
         // Fetch tenant status for trial banner
         try {
@@ -125,6 +150,13 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Desktop Topbar – fixed top, offset by sidebar width */}
         <Topbar sidebarOpen={sidebarOpen} />
+
+        {/* Password security warning banner */}
+        {showPasswordWarning && (
+          <div className={`fixed top-16 left-0 right-0 z-30 transition-all duration-300 ${sidebarOpen ? 'md:left-64' : 'md:left-16'}`}>
+            <PasswordWarningBanner onDismiss={() => setShowPasswordWarning(false)} />
+          </div>
+        )}
 
         {/* Main Content */}
         <main

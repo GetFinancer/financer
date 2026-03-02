@@ -156,6 +156,13 @@ const en: Record<TranslationKey, string> = {
   releaseNotesFixed: 'Fixed',
   releaseNotesClose: 'Got it',
 
+  // Password security warning
+  passwordWarningBanner: 'Your password may not meet the new security requirements (min. 12 characters). Please update it.',
+  passwordWarningCta: 'Update now',
+
+  // Billing error
+  settingsBillingError: 'Failed to open the payment page. Please try again.',
+
   settingsSupportContact: 'Questions or issues? Contact us at',
 
   // Settings - Session

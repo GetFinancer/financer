@@ -154,6 +154,13 @@ const de = {
   releaseNotesFixed: 'Behoben',
   releaseNotesClose: 'Alles klar',
 
+  // Password security warning
+  passwordWarningBanner: 'Dein Passwort entspricht möglicherweise nicht den neuen Sicherheitsanforderungen (mind. 12 Zeichen). Bitte aktualisiere es.',
+  passwordWarningCta: 'Jetzt ändern',
+
+  // Billing error
+  settingsBillingError: 'Fehler beim Öffnen der Zahlungsseite. Bitte versuche es erneut.',
+
   settingsSupportContact: 'Fragen oder Probleme? Kontaktiere uns unter',
 
   // Settings - Session

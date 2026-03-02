@@ -34,6 +34,18 @@ export const releaseNotes: VersionNotes[] = [
         de: 'Backup-Codes werden jetzt sicher gehasht gespeichert',
         en: 'Backup codes are now stored securely hashed',
       },
+      {
+        de: 'Hinweis bei Passwörtern, die die neuen Mindestanforderungen nicht erfüllen',
+        en: 'Warning for passwords that do not meet the new minimum requirements',
+      },
+      {
+        de: 'Admin-Panel zeigt E-Mail- und 2FA-Status direkt in der Tenant-Übersicht',
+        en: 'Admin panel now shows email and 2FA status directly in the tenant list',
+      },
+      {
+        de: 'Fehlermeldung beim Upgrade-Button wenn die Zahlungsseite nicht geöffnet werden kann',
+        en: 'Error message on the upgrade button if the payment page cannot be opened',
+      },
     ],
   },
 ];
