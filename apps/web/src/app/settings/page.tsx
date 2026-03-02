@@ -20,6 +20,8 @@ interface SetupData {
   backupCodes: string[];
 }
 
+const PASSWORD_MIN_LENGTH = 12;
+
 export default function SettingsPage() {
   const router = useRouter();
   const { t, locale, setLocale, locales } = useTranslation();
@@ -193,7 +195,7 @@ export default function SettingsPage() {
     setPasswordError('');
     setPasswordSuccess('');
 
-    if (passwordForm.newPassword.length < 4) {
+    if (passwordForm.newPassword.length < PASSWORD_MIN_LENGTH) {
       setPasswordError(t('settingsPasswordTooShort'));
       return;
     }

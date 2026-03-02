@@ -5,27 +5,34 @@ import { TOTP, generateSecret, generateURI, verifySync } from 'otplib';
 import * as QRCode from 'qrcode';
 import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
+import { SECURITY } from '../config/constants.js';
+import {
+  SetupSchema,
+  LoginSchema,
+  ChangePasswordSchema,
+  TwoFACodeSchema,
+  TwoFADisableSchema,
+  BackupCodeRegenerateSchema,
+  EmailSchema,
+} from '../lib/schemas.js';
 
 // Create TOTP instance
 const totp = new TOTP();
 
 export const authRouter = Router();
 
-// Rate limiting configuration
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MINUTES = 15;
-
 // Helper: Check if IP is locked out
 function isLockedOut(ip: string): { locked: boolean; remainingMinutes?: number } {
-  const cutoff = new Date(Date.now() - LOCKOUT_DURATION_MINUTES * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - SECURITY.LOGIN_LOCKOUT_DURATION_MINUTES * 60 * 1000).toISOString();
 
   const recentFailures = db.prepare(`
     SELECT COUNT(*) as count FROM login_attempts
     WHERE ip_address = ? AND attempted_at > ? AND success = 0
   `).get(ip, cutoff) as { count: number };
 
-  if (recentFailures.count >= MAX_LOGIN_ATTEMPTS) {
-    // Find the oldest recent failure to calculate remaining time
+  if (recentFailures.count >= SECURITY.LOGIN_ATTEMPT_LIMIT) {
     const oldestFailure = db.prepare(`
       SELECT attempted_at FROM login_attempts
       WHERE ip_address = ? AND attempted_at > ? AND success = 0
@@ -33,7 +40,7 @@ function isLockedOut(ip: string): { locked: boolean; remainingMinutes?: number }
     `).get(ip, cutoff) as { attempted_at: string } | undefined;
 
     if (oldestFailure) {
-      const lockoutEnd = new Date(new Date(oldestFailure.attempted_at).getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+      const lockoutEnd = new Date(new Date(oldestFailure.attempted_at).getTime() + SECURITY.LOGIN_LOCKOUT_DURATION_MINUTES * 60 * 1000);
       const remainingMs = lockoutEnd.getTime() - Date.now();
       const remainingMinutes = Math.ceil(remainingMs / 60000);
       return { locked: true, remainingMinutes };
@@ -49,8 +56,7 @@ function recordLoginAttempt(ip: string, success: boolean) {
     INSERT INTO login_attempts (ip_address, success) VALUES (?, ?)
   `).run(ip, success ? 1 : 0);
 
-  // Clean up old attempts (older than 24 hours)
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const dayAgo = new Date(Date.now() - SECURITY.LOGIN_CLEANUP_HOURS * 60 * 60 * 1000).toISOString();
   db.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').run(dayAgo);
 }
 
@@ -61,13 +67,35 @@ function getClientIp(req: Request): string {
          'unknown';
 }
 
-// Helper: Generate backup codes
+// Helper: Generate plain backup codes (returned to user, stored hashed)
 function generateBackupCodes(): string[] {
   const codes: string[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < SECURITY.BACKUP_CODES_COUNT; i++) {
     codes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
   }
   return codes;
+}
+
+// Helper: Hash backup codes for storage
+async function hashBackupCodes(codes: string[]): Promise<string[]> {
+  return Promise.all(codes.map(c => bcrypt.hash(c, SECURITY.BCRYPT_ROUNDS)));
+}
+
+// Helper: Verify a backup code against stored codes (supports hashed + legacy plaintext)
+// Returns the index of the matched code, or -1 if no match.
+async function verifyBackupCode(input: string, storedCodes: string[]): Promise<number> {
+  const normalized = input.toUpperCase().trim();
+  for (let i = 0; i < storedCodes.length; i++) {
+    const stored = storedCodes[i];
+    if (stored.startsWith('$2')) {
+      // Bcrypt hash — use constant-time compare
+      if (await bcrypt.compare(normalized, stored)) return i;
+    } else {
+      // Legacy plaintext (pre-hashing migration) — direct compare
+      if (normalized === stored) return i;
+    }
+  }
+  return -1;
 }
 
 // Helper: Get 2FA settings
@@ -103,50 +131,30 @@ authRouter.get('/status', (req, res) => {
 });
 
 // Initial setup - set password
-authRouter.post('/setup', async (req, res) => {
-  const { password } = req.body;
+authRouter.post('/setup', validate(SetupSchema), asyncHandler(async (req, res) => {
+  const { password } = req.body as { password: string };
 
-  if (!password || password.length < 4) {
-    res.status(400).json({
-      success: false,
-      error: 'Passwort muss mindestens 4 Zeichen lang sein',
-    });
-    return;
-  }
-
-  // Check if already set up
   const existingHash = db.prepare(
     "SELECT value FROM settings WHERE key = 'password_hash'"
   ).get();
 
   if (existingHash) {
-    res.status(400).json({
-      success: false,
-      error: 'Setup wurde bereits durchgeführt',
-    });
+    res.status(400).json({ success: false, error: 'Setup wurde bereits durchgeführt' });
     return;
   }
 
-  const hash = await bcrypt.hash(password, 10);
-
-  db.prepare(
-    "INSERT INTO settings (key, value) VALUES ('password_hash', ?)"
-  ).run(hash);
-
+  const hash = await bcrypt.hash(password, SECURITY.BCRYPT_ROUNDS);
+  db.prepare("INSERT INTO settings (key, value) VALUES ('password_hash', ?)").run(hash);
   req.session.isAuthenticated = true;
 
-  res.json({
-    success: true,
-    data: { success: true },
-  });
-});
+  res.json({ success: true, data: { success: true } });
+}));
 
 // Login
-authRouter.post('/login', async (req, res) => {
-  const { password, totpCode } = req.body;
+authRouter.post('/login', validate(LoginSchema), asyncHandler(async (req, res) => {
+  const { password, totpCode } = req.body as { password: string; totpCode?: string };
   const clientIp = getClientIp(req);
 
-  // Check rate limiting
   const lockoutStatus = isLockedOut(clientIp);
   if (lockoutStatus.locked) {
     res.status(429).json({
@@ -161,10 +169,7 @@ authRouter.post('/login', async (req, res) => {
   ).get() as { value: string } | undefined;
 
   if (!result) {
-    res.status(400).json({
-      success: false,
-      error: 'Setup nicht abgeschlossen',
-    });
+    res.status(400).json({ success: false, error: 'Setup nicht abgeschlossen' });
     return;
   }
 
@@ -176,23 +181,17 @@ authRouter.post('/login', async (req, res) => {
       req.session.isAuthenticated = true;
       req.session.pendingTwoFactor = false;
       recordLoginAttempt(clientIp, true);
-      res.json({
-        success: true,
-        data: { success: true },
-      });
+      res.json({ success: true, data: { success: true } });
       return;
     }
 
-    // Check TOTP code
     const totpResult = verifySync({ token: totpCode, secret: twoFactorSettings.secret });
     const isValidTotp = totpResult.valid;
 
-    // If TOTP fails, check backup codes
     let usedBackupCode = false;
     if (!isValidTotp && twoFactorSettings.backupCodes) {
-      const codeIndex = twoFactorSettings.backupCodes.indexOf(totpCode.toUpperCase());
+      const codeIndex = await verifyBackupCode(totpCode, twoFactorSettings.backupCodes);
       if (codeIndex !== -1) {
-        // Remove used backup code
         twoFactorSettings.backupCodes.splice(codeIndex, 1);
         db.prepare("UPDATE settings SET value = ? WHERE key = 'totp_backup_codes'")
           .run(JSON.stringify(twoFactorSettings.backupCodes));
@@ -202,10 +201,7 @@ authRouter.post('/login', async (req, res) => {
 
     if (!isValidTotp && !usedBackupCode) {
       recordLoginAttempt(clientIp, false);
-      res.status(401).json({
-        success: false,
-        error: 'Ungültiger 2FA-Code',
-      });
+      res.status(401).json({ success: false, error: 'Ungültiger 2FA-Code' });
       return;
     }
 
@@ -213,13 +209,7 @@ authRouter.post('/login', async (req, res) => {
     req.session.pendingTwoFactor = false;
     recordLoginAttempt(clientIp, true);
 
-    res.json({
-      success: true,
-      data: {
-        success: true,
-        usedBackupCode,
-      },
-    });
+    res.json({ success: true, data: { success: true, usedBackupCode } });
     return;
   }
 
@@ -228,115 +218,64 @@ authRouter.post('/login', async (req, res) => {
 
   if (!isValid) {
     recordLoginAttempt(clientIp, false);
-    res.status(401).json({
-      success: false,
-      error: 'Falsches Passwort',
-    });
+    res.status(401).json({ success: false, error: 'Falsches Passwort' });
     return;
   }
 
-  // Check if 2FA is enabled
   const twoFactorSettings = get2FASettings();
 
   if (twoFactorSettings.enabled) {
     req.session.pendingTwoFactor = true;
     req.session.isAuthenticated = false;
 
-    res.json({
-      success: true,
-      data: {
-        success: true,
-        requiresTwoFactor: true,
-      },
-    });
+    res.json({ success: true, data: { success: true, requiresTwoFactor: true } });
     return;
   }
 
-  // No 2FA, complete login
   req.session.isAuthenticated = true;
   recordLoginAttempt(clientIp, true);
 
-  res.json({
-    success: true,
-    data: { success: true },
-  });
-});
+  res.json({ success: true, data: { success: true } });
+}));
 
 // Logout
-authRouter.post('/logout', (req, res) => {
+authRouter.post('/logout', (req, res, next) => {
   req.session.destroy((err) => {
-    if (err) {
-      res.status(500).json({
-        success: false,
-        error: 'Logout fehlgeschlagen',
-      });
-      return;
-    }
-    res.json({
-      success: true,
-      data: { success: true },
-    });
+    if (err) { next(err); return; }
+    res.json({ success: true, data: { success: true } });
   });
 });
 
 // Change password (requires authentication)
-authRouter.post('/change-password', authMiddleware, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-
-  if (!currentPassword || !newPassword) {
-    res.status(400).json({
-      success: false,
-      error: 'Aktuelles und neues Passwort erforderlich',
-    });
-    return;
-  }
-
-  if (newPassword.length < 4) {
-    res.status(400).json({
-      success: false,
-      error: 'Neues Passwort muss mindestens 4 Zeichen lang sein',
-    });
-    return;
-  }
+authRouter.post('/change-password', authMiddleware, validate(ChangePasswordSchema), asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
 
   const result = db.prepare(
     "SELECT value FROM settings WHERE key = 'password_hash'"
   ).get() as { value: string } | undefined;
 
   if (!result) {
-    res.status(400).json({
-      success: false,
-      error: 'Kein Passwort gesetzt',
-    });
+    res.status(400).json({ success: false, error: 'Kein Passwort gesetzt' });
     return;
   }
 
   const isValid = await bcrypt.compare(currentPassword, result.value);
 
   if (!isValid) {
-    res.status(401).json({
-      success: false,
-      error: 'Aktuelles Passwort ist falsch',
-    });
+    res.status(401).json({ success: false, error: 'Aktuelles Passwort ist falsch' });
     return;
   }
 
-  const newHash = await bcrypt.hash(newPassword, 10);
+  const newHash = await bcrypt.hash(newPassword, SECURITY.BCRYPT_ROUNDS);
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'password_hash'").run(newHash);
 
-  db.prepare(
-    "UPDATE settings SET value = ? WHERE key = 'password_hash'"
-  ).run(newHash);
-
-  res.json({
-    success: true,
-    data: { success: true },
-  });
-});
+  res.json({ success: true, data: { success: true } });
+}));
 
 // ===== 2FA Endpoints =====
 
 // Get 2FA status
-authRouter.get('/2fa/status', authMiddleware, (req, res) => {
+authRouter.get('/2fa/status', authMiddleware, (req: Request, res: Response) => {
   const settings = get2FASettings();
 
   res.json({
@@ -350,59 +289,34 @@ authRouter.get('/2fa/status', authMiddleware, (req, res) => {
 });
 
 // Start 2FA setup - generate secret and QR code
-authRouter.post('/2fa/setup', authMiddleware, async (req, res) => {
+authRouter.post('/2fa/setup', authMiddleware, asyncHandler(async (_req, res) => {
   const settings = get2FASettings();
 
   if (settings.enabled) {
-    res.status(400).json({
-      success: false,
-      error: '2FA ist bereits aktiviert',
-    });
+    res.status(400).json({ success: false, error: '2FA ist bereits aktiviert' });
     return;
   }
 
-  // Generate new secret
   const secret = generateSecret();
-
-  // Generate QR code URL
   const otpauth = generateURI({ issuer: 'Financer', label: 'user', secret });
   const qrCodeUrl = await QRCode.toDataURL(otpauth);
 
-  // Generate backup codes
-  const backupCodes = generateBackupCodes();
+  const plainCodes = generateBackupCodes();
+  const hashedCodes = await hashBackupCodes(plainCodes);
 
-  // Store temporarily (not enabled yet)
-  db.prepare(`
-    INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_secret_pending', ?)
-  `).run(secret);
-
-  db.prepare(`
-    INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_backup_codes_pending', ?)
-  `).run(JSON.stringify(backupCodes));
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_secret_pending', ?)").run(secret);
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_backup_codes_pending', ?)").run(JSON.stringify(hashedCodes));
 
   res.json({
     success: true,
-    data: {
-      secret,
-      qrCodeUrl,
-      backupCodes,
-    },
+    data: { secret, qrCodeUrl, backupCodes: plainCodes },
   });
-});
+}));
 
 // Verify and enable 2FA
-authRouter.post('/2fa/verify', authMiddleware, (req, res) => {
-  const { code } = req.body;
+authRouter.post('/2fa/verify', authMiddleware, validate(TwoFACodeSchema), (req: Request, res: Response) => {
+  const { code } = req.body as { code: string };
 
-  if (!code) {
-    res.status(400).json({
-      success: false,
-      error: 'Code erforderlich',
-    });
-    return;
-  }
-
-  // Get pending secret
   const pendingSecret = db.prepare(
     "SELECT value FROM settings WHERE key = 'totp_secret_pending'"
   ).get() as { value: string } | undefined;
@@ -415,24 +329,18 @@ authRouter.post('/2fa/verify', authMiddleware, (req, res) => {
     return;
   }
 
-  // Verify the code
   const verifyResult = verifySync({ token: code, secret: pendingSecret.value });
   const isValid = verifyResult.valid;
 
   if (!isValid) {
-    res.status(400).json({
-      success: false,
-      error: 'Ungültiger Code. Bitte versuche es erneut.',
-    });
+    res.status(400).json({ success: false, error: 'Ungültiger Code. Bitte versuche es erneut.' });
     return;
   }
 
-  // Get pending backup codes
   const pendingBackupCodes = db.prepare(
     "SELECT value FROM settings WHERE key = 'totp_backup_codes_pending'"
   ).get() as { value: string } | undefined;
 
-  // Activate 2FA
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_secret', ?)").run(pendingSecret.value);
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_enabled', 'true')").run();
 
@@ -440,166 +348,106 @@ authRouter.post('/2fa/verify', authMiddleware, (req, res) => {
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('totp_backup_codes', ?)").run(pendingBackupCodes.value);
   }
 
-  // Clean up pending
   db.prepare("DELETE FROM settings WHERE key = 'totp_secret_pending'").run();
   db.prepare("DELETE FROM settings WHERE key = 'totp_backup_codes_pending'").run();
 
-  res.json({
-    success: true,
-    data: { success: true },
-  });
+  res.json({ success: true, data: { success: true } });
 });
 
 // Disable 2FA
-authRouter.post('/2fa/disable', authMiddleware, async (req, res) => {
-  const { password, code } = req.body;
+authRouter.post('/2fa/disable', authMiddleware, validate(TwoFADisableSchema), asyncHandler(async (req, res) => {
+  const { password, code } = req.body as { password: string; code?: string };
 
-  if (!password) {
-    res.status(400).json({
-      success: false,
-      error: 'Passwort erforderlich',
-    });
-    return;
-  }
-
-  // Verify password
   const result = db.prepare(
     "SELECT value FROM settings WHERE key = 'password_hash'"
   ).get() as { value: string } | undefined;
 
   if (!result) {
-    res.status(400).json({
-      success: false,
-      error: 'Kein Passwort gesetzt',
-    });
+    res.status(400).json({ success: false, error: 'Kein Passwort gesetzt' });
     return;
   }
 
   const isValidPassword = await bcrypt.compare(password, result.value);
 
   if (!isValidPassword) {
-    res.status(401).json({
-      success: false,
-      error: 'Falsches Passwort',
-    });
+    res.status(401).json({ success: false, error: 'Falsches Passwort' });
     return;
   }
 
-  // Verify 2FA code if 2FA is enabled
   const settings = get2FASettings();
 
   if (settings.enabled && settings.secret) {
     if (!code) {
-      res.status(400).json({
-        success: false,
-        error: '2FA-Code erforderlich',
-      });
+      res.status(400).json({ success: false, error: '2FA-Code erforderlich' });
       return;
     }
 
     const codeVerifyResult = verifySync({ token: code, secret: settings.secret });
     const isValidCode = codeVerifyResult.valid;
 
-    // Check backup code if TOTP fails
     let validBackupCode = false;
     if (!isValidCode && settings.backupCodes) {
-      validBackupCode = settings.backupCodes.includes(code.toUpperCase());
+      validBackupCode = await verifyBackupCode(code, settings.backupCodes) !== -1;
     }
 
     if (!isValidCode && !validBackupCode) {
-      res.status(401).json({
-        success: false,
-        error: 'Ungültiger 2FA-Code',
-      });
+      res.status(401).json({ success: false, error: 'Ungültiger 2FA-Code' });
       return;
     }
   }
 
-  // Disable 2FA
   db.prepare("DELETE FROM settings WHERE key = 'totp_secret'").run();
   db.prepare("DELETE FROM settings WHERE key = 'totp_enabled'").run();
   db.prepare("DELETE FROM settings WHERE key = 'totp_backup_codes'").run();
 
-  res.json({
-    success: true,
-    data: { success: true },
-  });
-});
+  res.json({ success: true, data: { success: true } });
+}));
 
 // Regenerate backup codes
-authRouter.post('/2fa/backup-codes/regenerate', authMiddleware, async (req, res) => {
-  const { password } = req.body;
+authRouter.post('/2fa/backup-codes/regenerate', authMiddleware, validate(BackupCodeRegenerateSchema), asyncHandler(async (req, res) => {
+  const { password } = req.body as { password: string };
 
-  if (!password) {
-    res.status(400).json({
-      success: false,
-      error: 'Passwort erforderlich',
-    });
-    return;
-  }
-
-  // Verify password
   const result = db.prepare(
     "SELECT value FROM settings WHERE key = 'password_hash'"
   ).get() as { value: string } | undefined;
 
   if (!result) {
-    res.status(400).json({
-      success: false,
-      error: 'Kein Passwort gesetzt',
-    });
+    res.status(400).json({ success: false, error: 'Kein Passwort gesetzt' });
     return;
   }
 
   const isValidPassword = await bcrypt.compare(password, result.value);
 
   if (!isValidPassword) {
-    res.status(401).json({
-      success: false,
-      error: 'Falsches Passwort',
-    });
+    res.status(401).json({ success: false, error: 'Falsches Passwort' });
     return;
   }
 
   const settings = get2FASettings();
 
   if (!settings.enabled) {
-    res.status(400).json({
-      success: false,
-      error: '2FA ist nicht aktiviert',
-    });
+    res.status(400).json({ success: false, error: '2FA ist nicht aktiviert' });
     return;
   }
 
-  // Generate new backup codes
-  const backupCodes = generateBackupCodes();
+  const plainCodes = generateBackupCodes();
+  const hashedCodes = await hashBackupCodes(plainCodes);
 
   db.prepare("UPDATE settings SET value = ? WHERE key = 'totp_backup_codes'")
-    .run(JSON.stringify(backupCodes));
+    .run(JSON.stringify(hashedCodes));
 
-  res.json({
-    success: true,
-    data: { backupCodes },
-  });
-});
+  res.json({ success: true, data: { backupCodes: plainCodes } });
+}));
 
 // Email endpoints
-authRouter.get('/email', authMiddleware, (_req, res) => {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('email');
+authRouter.get('/email', authMiddleware, (_req, res: Response) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('email') as { value: string } | undefined;
   res.json({ success: true, data: { email: row?.value || '' } });
 });
 
-authRouter.put('/email', authMiddleware, (req, res) => {
-  const { email } = req.body;
-  if (email !== undefined && typeof email === 'string') {
-    const trimmed = email.trim();
-    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      res.status(400).json({ success: false, error: 'Invalid email format' });
-      return;
-    }
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('email', trimmed);
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ success: false, error: 'Email is required' });
-  }
+authRouter.put('/email', authMiddleware, validate(EmailSchema), (req: Request, res: Response) => {
+  const { email } = req.body as { email: string };
+  const trimmed = email.trim();
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('email', trimmed);
+  res.json({ success: true });
 });

@@ -79,7 +79,7 @@ const de = {
   setupButton: 'Financer einrichten',
   setupLoading: 'Einrichten...',
   setupFailed: 'Setup fehlgeschlagen. Bitte versuche es erneut.',
-  setupPasswordTooShort: 'Passwort muss mindestens 4 Zeichen lang sein',
+  setupPasswordTooShort: 'Passwort muss mindestens 12 Zeichen lang sein',
   setupPasswordMismatch: 'Passwörter stimmen nicht überein',
 
   // Settings
@@ -137,7 +137,7 @@ const de = {
   settingsConfirmNewPassword: 'Neues Passwort bestätigen',
   settingsPasswordChanged: 'Passwort erfolgreich geändert',
   settingsPasswordChangeFailed: 'Passwort konnte nicht geändert werden',
-  settingsPasswordTooShort: 'Neues Passwort muss mindestens 4 Zeichen lang sein',
+  settingsPasswordTooShort: 'Neues Passwort muss mindestens 12 Zeichen lang sein',
   settingsPasswordMismatch: 'Passwörter stimmen nicht überein',
   settingsChanging: 'Ändern...',
 

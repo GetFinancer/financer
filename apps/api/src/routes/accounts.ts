@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { CreateAccountSchema, UpdateAccountSchema } from '../lib/schemas.js';
 import type { AccountWithBalance, CreateAccountRequest } from '@financer/shared';
 
 // DB Row type (snake_case from SQLite)
@@ -128,13 +130,8 @@ accountsRouter.get('/:id', (req, res) => {
 });
 
 // Create account
-accountsRouter.post('/', (req, res) => {
+accountsRouter.post('/', validate(CreateAccountSchema), (req, res) => {
   const { name, type, currency, initialBalance, color, icon, includeInBudget, isDefault, billingDay, paymentDay, linkedAccountId } = req.body as CreateAccountRequest;
-
-  if (!name || !type) {
-    res.status(400).json({ success: false, error: 'Name und Typ sind erforderlich' });
-    return;
-  }
 
   // Credit cards cannot be included in budget
   const shouldIncludeInBudget = type === 'credit' ? false : (includeInBudget !== false);
@@ -179,7 +176,7 @@ accountsRouter.post('/', (req, res) => {
 });
 
 // Update account
-accountsRouter.put('/:id', (req, res, next) => {
+accountsRouter.put('/:id', validate(UpdateAccountSchema), (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, type, currency, initialBalance, color, icon, includeInBudget, isDefault, billingDay, paymentDay, linkedAccountId } = req.body;
