@@ -37,14 +37,14 @@ describe('API Tests', () => {
     });
 
     describe('POST /api/auth/setup', () => {
-      it('rejects password shorter than 4 characters', async () => {
+      it('rejects password shorter than 12 characters', async () => {
         const res = await request(app)
           .post('/api/auth/setup')
           .send({ password: '123' });
 
         expect(res.status).toBe(400);
         expect(res.body.success).toBe(false);
-        expect(res.body.error).toContain('4 Zeichen');
+        expect(res.body.error).toContain('12');
       });
 
       it('successfully sets up password', async () => {
@@ -110,8 +110,8 @@ describe('API Tests', () => {
     beforeEach(async () => {
       agent = request.agent(app);
       // Setup and login
-      await agent.post('/api/auth/setup').send({ password: 'test1234' });
-      await agent.post('/api/auth/login').send({ password: 'test1234' });
+      await agent.post('/api/auth/setup').send({ password: 'testpassword1' });
+      await agent.post('/api/auth/login').send({ password: 'testpassword1' });
     });
 
     describe('GET /api/accounts', () => {
@@ -144,8 +144,8 @@ describe('API Tests', () => {
           type: 'invalid',
         });
 
-        // The DB constraint rejects invalid types with a 500 error
-        expect(res.status).toBe(500);
+        // Zod validation rejects invalid types with a 400 error
+        expect(res.status).toBe(400);
       });
 
       it('requires name', async () => {
@@ -163,8 +163,8 @@ describe('API Tests', () => {
 
     beforeEach(async () => {
       agent = request.agent(app);
-      await agent.post('/api/auth/setup').send({ password: 'test1234' });
-      await agent.post('/api/auth/login').send({ password: 'test1234' });
+      await agent.post('/api/auth/setup').send({ password: 'testpassword1' });
+      await agent.post('/api/auth/login').send({ password: 'testpassword1' });
     });
 
     describe('GET /api/categories', () => {
@@ -208,8 +208,8 @@ describe('API Tests', () => {
 
     beforeEach(async () => {
       agent = request.agent(app);
-      await agent.post('/api/auth/setup').send({ password: 'test1234' });
-      await agent.post('/api/auth/login').send({ password: 'test1234' });
+      await agent.post('/api/auth/setup').send({ password: 'testpassword1' });
+      await agent.post('/api/auth/login').send({ password: 'testpassword1' });
 
       // Create test account
       const accountRes = await agent.post('/api/accounts').send({
@@ -267,7 +267,7 @@ describe('API Tests', () => {
         });
 
         expect(res.status).toBe(400);
-        expect(res.body.error).toContain('Ungültiger Transaktionstyp');
+        expect(res.body.error).toContain('type');
       });
 
       it('requires accountId', async () => {
@@ -338,16 +338,12 @@ describe('API Tests', () => {
         });
         const id = createRes.body.data.id;
 
-        // Update it - send all fields to avoid undefined binding issues
         const res = await agent.put(`/api/transactions/${id}`).send({
           accountId,
           amount: 200,
           type: 'income',
           date: '2024-01-15',
           description: 'Updated',
-          categoryId: null,
-          notes: null,
-          transferToAccountId: null,
         });
 
         expect(res.status).toBe(200);
