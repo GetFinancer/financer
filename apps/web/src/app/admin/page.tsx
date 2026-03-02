@@ -118,6 +118,14 @@ function TenantTable({
   const [tenantInfo, setTenantInfo] = useState<Record<string, { email: string; has2fa: boolean; hasPassword: boolean; mailerConfigured: boolean }>>({});
   const [pwResetStatus, setPwResetStatus] = useState<Record<string, string>>({});
 
+  // Auto-load info for all tenants
+  useEffect(() => {
+    tenants.forEach(t => {
+      if (!tenantInfo[t.name]) loadTenantInfo(t.name);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenants]);
+
   async function handleStatusChange(name: string) {
     await adminFetch(`/tenants/${name}`, {
       method: 'PATCH',
@@ -203,6 +211,8 @@ function TenantTable({
               <th className="pb-2 pr-4">Created</th>
               {hosted && <th className="pb-2 pr-4">Trial Ends</th>}
               {hosted && <th className="pb-2 pr-4">Stripe</th>}
+              <th className="pb-2 pr-4">Email</th>
+              <th className="pb-2 pr-4">2FA</th>
               <th className="pb-2">Actions</th>
             </tr>
           </thead>
@@ -232,6 +242,28 @@ function TenantTable({
                     )}
                   </td>
                 )}
+                <td className="py-3 pr-4">
+                  {tenantInfo[t.name] ? (
+                    tenantInfo[t.name].email ? (
+                      <span className="text-green-400 text-xs" title={tenantInfo[t.name].email}>✓</span>
+                    ) : (
+                      <span className="text-yellow-500 text-xs">—</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground text-xs animate-pulse">···</span>
+                  )}
+                </td>
+                <td className="py-3 pr-4">
+                  {tenantInfo[t.name] ? (
+                    tenantInfo[t.name].has2fa ? (
+                      <span className="text-green-400 text-xs">✓</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground text-xs animate-pulse">···</span>
+                  )}
+                </td>
                 <td className="py-3">
                   {editingTenant === t.name ? (
                     <div className="flex flex-col gap-2">
@@ -329,7 +361,7 @@ function TenantTable({
             ))}
             {tenants.length === 0 && (
               <tr>
-                <td colSpan={hosted ? 6 : 4} className="py-8 text-center text-muted-foreground">
+                <td colSpan={hosted ? 8 : 6} className="py-8 text-center text-muted-foreground">
                   No tenants registered yet
                 </td>
               </tr>

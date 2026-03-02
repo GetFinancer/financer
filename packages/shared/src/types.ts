@@ -247,6 +247,7 @@ export interface AuthStatus {
   isSetupComplete: boolean;
   twoFactorEnabled: boolean;
   twoFactorRequired?: boolean; // true wenn Passwort korrekt aber 2FA noch aussteht
+  passwordNeedsUpdate?: boolean; // true wenn Passwort die Mindestanforderungen nicht erfüllt
 }
 
 export interface LoginRequest {

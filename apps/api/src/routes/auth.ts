@@ -118,6 +118,9 @@ authRouter.get('/status', (req, res) => {
   ).get() as { value: string } | undefined;
 
   const twoFactorSettings = get2FASettings();
+  const passwordPolicyMet = db.prepare(
+    "SELECT value FROM settings WHERE key = 'password_policy_v1_met'"
+  ).get() as { value: string } | undefined;
 
   res.json({
     success: true,
@@ -126,6 +129,7 @@ authRouter.get('/status', (req, res) => {
       isSetupComplete: !!passwordHash,
       twoFactorEnabled: twoFactorSettings.enabled,
       twoFactorRequired: req.session.pendingTwoFactor === true,
+      passwordNeedsUpdate: !!passwordHash && !passwordPolicyMet,
     },
   });
 });
@@ -145,6 +149,7 @@ authRouter.post('/setup', validate(SetupSchema), asyncHandler(async (req, res) =
 
   const hash = await bcrypt.hash(password, SECURITY.BCRYPT_ROUNDS);
   db.prepare("INSERT INTO settings (key, value) VALUES ('password_hash', ?)").run(hash);
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('password_policy_v1_met', 'true')").run();
   req.session.isAuthenticated = true;
 
   res.json({ success: true, data: { success: true } });
@@ -268,6 +273,7 @@ authRouter.post('/change-password', authMiddleware, validate(ChangePasswordSchem
 
   const newHash = await bcrypt.hash(newPassword, SECURITY.BCRYPT_ROUNDS);
   db.prepare("UPDATE settings SET value = ? WHERE key = 'password_hash'").run(newHash);
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('password_policy_v1_met', 'true')").run();
 
   res.json({ success: true, data: { success: true } });
 }));
