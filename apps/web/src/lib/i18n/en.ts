@@ -147,6 +147,14 @@ const en: Record<TranslationKey, string> = {
   settingsAppInfo: 'App Information',
   settingsVersion: 'Version',
   settingsLicense: 'License',
+  settingsReleaseNotes: 'Release Notes',
+
+  // Release Notes Modal
+  releaseNotesTitle: "What's new",
+  releaseNotesNew: 'New',
+  releaseNotesImproved: 'Improved',
+  releaseNotesFixed: 'Fixed',
+  releaseNotesClose: 'Got it',
 
   settingsSupportContact: 'Questions or issues? Contact us at',
 

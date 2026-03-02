@@ -1,6 +1,15 @@
 // Security constants — single source of truth for all security-related values.
 // Avoids magic numbers scattered across the codebase.
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const _pkg = JSON.parse(
+  readFileSync(resolve(__dirname, '../../package.json'), 'utf-8')
+) as { version: string };
+
+export const APP_VERSION: string = process.env.APP_VERSION ?? _pkg.version;
+
 export const SECURITY = {
   PASSWORD_MIN_LENGTH: 12,
   BCRYPT_ROUNDS: 10,

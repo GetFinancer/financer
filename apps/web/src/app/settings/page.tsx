@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useTranslation, Locale } from '@/lib/i18n';
 import type { TenantStatus } from '@financer/shared';
 import { PasswordInput } from '@/components/PasswordInput';
+import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
 
 interface TwoFactorStatus {
   enabled: boolean;
@@ -75,10 +76,15 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [themeMounted, setThemeMounted] = useState(false);
 
+  // Release Notes state
+  const [currentVersion, setCurrentVersion] = useState('0.0.0');
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+
   useEffect(() => {
     load2FAStatus();
     loadTenantStatus();
     loadEmail();
+    api.getReleaseNotesStatus().then(s => setCurrentVersion(s.currentVersion)).catch(() => {});
     // Load theme from localStorage
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
     if (savedTheme) {
@@ -826,7 +832,7 @@ export default function SettingsPage() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('settingsVersion')}</dt>
-              <dd>{process.env.APP_VERSION || '0.0.0'}</dd>
+              <dd>{currentVersion}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('settingsLicense')}</dt>
@@ -835,6 +841,15 @@ export default function SettingsPage() {
           </dl>
 
           <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border">
+            <button
+              onClick={() => setReleaseNotesOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-background border border-border rounded-md hover:bg-background-surface-hover transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              {t('settingsReleaseNotes')}
+            </button>
             <a
               href="https://docs.getfinancer.com"
               target="_blank"
@@ -885,6 +900,13 @@ export default function SettingsPage() {
           </button>
         </section>
       </div>
+
+      {releaseNotesOpen && (
+        <ReleaseNotesModal
+          version={currentVersion}
+          onClose={() => setReleaseNotesOpen(false)}
+        />
+      )}
     </>
   );
 }
