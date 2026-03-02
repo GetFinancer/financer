@@ -145,6 +145,14 @@ const de = {
   settingsAppInfo: 'App-Informationen',
   settingsVersion: 'Version',
   settingsLicense: 'Lizenz',
+  settingsReleaseNotes: 'Release Notes',
+
+  // Release Notes Modal
+  releaseNotesTitle: 'Was ist neu',
+  releaseNotesNew: 'Neu',
+  releaseNotesImproved: 'Verbessert',
+  releaseNotesFixed: 'Behoben',
+  releaseNotesClose: 'Alles klar',
 
   settingsSupportContact: 'Fragen oder Probleme? Kontaktiere uns unter',
 

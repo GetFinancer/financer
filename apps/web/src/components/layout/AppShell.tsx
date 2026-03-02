@@ -8,6 +8,8 @@ import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
+import { releaseNotes } from '@/lib/release-notes';
 import type { TenantStatus } from '@financer/shared';
 
 interface AppShellProps {
@@ -25,6 +27,7 @@ export function AppShell({ children }: AppShellProps) {
   const [authenticated, setAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | null>(null);
+  const [releaseNotesVersion, setReleaseNotesVersion] = useState<string | null>(null);
 
   const isAuthPage = authPages.includes(pathname);
 
@@ -52,7 +55,23 @@ export function AppShell({ children }: AppShellProps) {
         } catch {
           // Ignore — legacy tenant or billing not configured
         }
-      } catch (error) {
+
+        // Check if release notes should be shown
+        try {
+          const rnStatus = await api.getReleaseNotesStatus();
+          if (rnStatus.lastSeenVersion !== rnStatus.currentVersion) {
+            const hasNotes = releaseNotes.some(n => n.version === rnStatus.currentVersion);
+            if (hasNotes) {
+              setReleaseNotesVersion(rnStatus.currentVersion);
+            } else {
+              // No notes for this version — mark as seen silently
+              await api.markReleaseNotesSeen();
+            }
+          }
+        } catch {
+          // Ignore — don't block the app if this fails
+        }
+      } catch {
         router.push('/login');
       } finally {
         setLoading(false);
@@ -68,6 +87,15 @@ export function AppShell({ children }: AppShellProps) {
 
     checkAuth();
   }, [router, isAuthPage]);
+
+  async function handleReleaseNotesClose() {
+    setReleaseNotesVersion(null);
+    try {
+      await api.markReleaseNotesSeen();
+    } catch {
+      // Ignore
+    }
+  }
 
   // Auth pages render without shell but still need LanguageProvider
   if (isAuthPage) {
@@ -115,6 +143,14 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Mobile Bottom Navigation */}
         <BottomNav />
+
+        {/* Release Notes Modal */}
+        {releaseNotesVersion && (
+          <ReleaseNotesModal
+            version={releaseNotesVersion}
+            onClose={handleReleaseNotesClose}
+          />
+        )}
       </div>
     </LanguageProvider>
   );

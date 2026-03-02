@@ -321,4 +321,11 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ email }),
     }),
+
+  // Release Notes
+  getReleaseNotesStatus: () =>
+    fetchApi<{ lastSeenVersion: string | null; currentVersion: string }>('/auth/release-notes-status'),
+
+  markReleaseNotesSeen: () =>
+    fetchApi<{ version: string }>('/auth/release-notes-seen', { method: 'POST' }),
 };

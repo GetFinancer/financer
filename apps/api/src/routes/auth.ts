@@ -7,7 +7,7 @@ import { db } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
-import { SECURITY } from '../config/constants.js';
+import { SECURITY, APP_VERSION } from '../config/constants.js';
 import {
   SetupSchema,
   LoginSchema,
@@ -450,4 +450,21 @@ authRouter.put('/email', authMiddleware, validate(EmailSchema), (req: Request, r
   const trimmed = email.trim();
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('email', trimmed);
   res.json({ success: true });
+});
+
+// Release Notes endpoints
+authRouter.get('/release-notes-status', authMiddleware, (_req: Request, res: Response) => {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'last_seen_version'").get() as { value: string } | undefined;
+  res.json({
+    success: true,
+    data: {
+      lastSeenVersion: row?.value ?? null,
+      currentVersion: APP_VERSION,
+    },
+  });
+});
+
+authRouter.post('/release-notes-seen', authMiddleware, (_req: Request, res: Response) => {
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_seen_version', ?)").run(APP_VERSION);
+  res.json({ success: true, data: { version: APP_VERSION } });
 });
