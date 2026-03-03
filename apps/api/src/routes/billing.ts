@@ -53,8 +53,6 @@ billingRouter.post('/checkout', authMiddleware, async (req, res) => {
 
     if (customerId) {
       sessionParams.customer = customerId;
-    } else {
-      sessionParams.customer_creation = 'always';
     }
 
     // Apply discount coupon if tenant has redeemed one
