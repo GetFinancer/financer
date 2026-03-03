@@ -44,7 +44,6 @@ billingRouter.post('/checkout', authMiddleware, async (req, res) => {
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
-      payment_method_types: ['card', 'sepa_debit'],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${tenantUrl}/settings?billing=success`,
       cancel_url: `${tenantUrl}/settings?billing=cancelled`,
@@ -69,7 +68,7 @@ billingRouter.post('/checkout', authMiddleware, async (req, res) => {
     });
   } catch (error: any) {
     console.error('Failed to create checkout session:', error);
-    res.status(500).json({ success: false, error: error?.message || 'Failed to create checkout session.' });
+    res.status(500).json({ success: false, error: 'Failed to create checkout session.' });
   }
 });
 
