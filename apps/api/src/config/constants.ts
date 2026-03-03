@@ -4,11 +4,19 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const _pkg = JSON.parse(
-  readFileSync(resolve(__dirname, '../../package.json'), 'utf-8')
-) as { version: string };
+function _readVersion(): string {
+  try {
+    // process.cwd() is reliable regardless of bundling (run from apps/api/)
+    const pkg = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'package.json'), 'utf-8')
+    ) as { version?: string };
+    return pkg.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
-export const APP_VERSION: string = process.env.APP_VERSION ?? _pkg.version;
+export const APP_VERSION: string = process.env.APP_VERSION ?? _readVersion();
 
 export const SECURITY = {
   PASSWORD_MIN_LENGTH: 12,
