@@ -8,6 +8,11 @@ const RESERVED_NAMES = ['www', 'api', 'admin', 'app', 'mail', 'smtp', 'ftp', 'ns
 
 export const registerRouter = Router();
 
+// Public config for register page (base domain)
+registerRouter.get('/config', (_req, res) => {
+  res.json({ success: true, data: { baseDomain: process.env.BASE_DOMAIN || 'getfinancer.com' } });
+});
+
 // Check tenant name availability
 registerRouter.get('/check/:name', (req, res) => {
   const name = req.params.name.toLowerCase();

@@ -142,9 +142,8 @@ export function tenantNameAvailable(name: string): boolean {
   stmt.bind([name]);
   const exists = stmt.step();
   stmt.free();
-  // Also check if directory exists (legacy tenant without registry entry)
-  const tenantDir = path.join(dataDir, name);
-  return !exists && !fs.existsSync(tenantDir);
+  // Only the registry DB is authoritative — an orphan directory (no DB entry) is re-usable
+  return !exists;
 }
 
 export function registerTenant(name: string): void {
