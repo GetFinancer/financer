@@ -54,6 +54,18 @@ export interface Transaction {
   updatedAt: string;
 }
 
+export interface SplitShare {
+  tenant: string;
+  amount: number;
+  settled: boolean;
+}
+
+export interface TransactionSplit {
+  splitId: number;
+  splitType: 'equal' | 'custom';
+  shares: SplitShare[];
+}
+
 export interface TransactionWithDetails extends Transaction {
   accountName: string;
   categoryName?: string;
@@ -61,6 +73,7 @@ export interface TransactionWithDetails extends Transaction {
   parentCategoryName?: string;
   transferToAccountName?: string;
   addedBy?: string; // tenant who added this tx (for shared accounts)
+  split?: TransactionSplit; // split data for shared account transactions
 }
 
 // API Request/Response Types

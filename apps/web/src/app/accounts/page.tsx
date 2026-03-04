@@ -174,7 +174,7 @@ export default function AccountsPage() {
       {selectedShared && (
         <SharedAccountModal
           account={selectedShared}
-          onClose={() => setSelectedShared(null)}
+          onClose={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
           onDeleted={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
         />
       )}

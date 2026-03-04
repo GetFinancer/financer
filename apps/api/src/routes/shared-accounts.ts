@@ -14,7 +14,7 @@ import {
   isMemberOrOwner,
   getSharedAccountByOwnerAndAccountId,
 } from '../db/registry.js';
-import type { SharedAccountInfo, SharedBalanceResult, TransactionWithDetails } from '@financer/shared';
+import type { SharedAccountInfo, SharedBalanceResult, TransactionWithDetails, TransactionSplit } from '@financer/shared';
 
 export const sharedAccountsRouter = Router();
 
@@ -306,8 +306,8 @@ sharedAccountsRouter.get('/:uuid/transactions', async (req, res) => {
 
     const sa = getSharedAccount(uuid)!;
 
-    const transactions = await inOwnerDb(sa.ownerTenant, () =>
-      db.prepare(`
+    const [transactions, splitRows] = await inOwnerDb(sa.ownerTenant, () => {
+      const txs = db.prepare(`
         SELECT
           t.*,
           a.name as account_name,
@@ -322,8 +322,27 @@ sharedAccountsRouter.get('/:uuid/transactions', async (req, res) => {
         LEFT JOIN accounts ta ON t.transfer_to_account_id = ta.id
         WHERE t.account_id = ?
         ORDER BY t.date DESC, t.id DESC
-      `).all(sa.accountId) as any[]
-    );
+      `).all(sa.accountId) as any[];
+
+      const splits = db.prepare(`
+        SELECT ss.id as split_id, ss.transaction_id, ss.split_type,
+               sss.tenant, sss.amount, sss.settled
+        FROM shared_splits ss
+        JOIN shared_split_shares sss ON sss.split_id = ss.id
+        WHERE ss.shared_uuid = ?
+      `).all(uuid) as any[];
+
+      return [txs, splits];
+    });
+
+    // Group split shares by transaction_id
+    const splitMap: Record<number, TransactionSplit> = {};
+    for (const s of splitRows) {
+      if (!splitMap[s.transaction_id]) {
+        splitMap[s.transaction_id] = { splitId: s.split_id, splitType: s.split_type, shares: [] };
+      }
+      splitMap[s.transaction_id].shares.push({ tenant: s.tenant, amount: s.amount, settled: s.settled === 1 });
+    }
 
     const mapped: TransactionWithDetails[] = transactions.map(t => ({
       id: t.id,
@@ -343,6 +362,7 @@ sharedAccountsRouter.get('/:uuid/transactions', async (req, res) => {
       parentCategoryName: t.parent_category_name ?? undefined,
       transferToAccountName: t.transfer_to_account_name ?? undefined,
       addedBy: t.added_by ?? sa.ownerTenant,
+      split: splitMap[t.id],
     }));
 
     res.json({ success: true, data: mapped });
@@ -493,6 +513,35 @@ sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) =>
     res.json({ success: true, data: { success: true } });
   } catch (err) {
     console.error('POST /shared-accounts/:uuid/transactions/:txId/split error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// PATCH /shared-accounts/:uuid/transactions/:txId/split/share — toggle settled status for a share
+sharedAccountsRouter.patch('/:uuid/transactions/:txId/split/share', async (req, res) => {
+  try {
+    const tenant = currentTenant();
+    const { uuid, txId } = req.params;
+    const { tenant: targetTenant, settled } = req.body;
+
+    const role = isMemberOrOwner(uuid, tenant);
+    if (!role) {
+      res.status(403).json({ success: false, error: 'Kein Zugriff / Access denied' });
+      return;
+    }
+
+    const sa = getSharedAccount(uuid)!;
+
+    await inOwnerDb(sa.ownerTenant, () => {
+      const split = db.prepare('SELECT id FROM shared_splits WHERE transaction_id = ? AND shared_uuid = ?').get(txId, uuid) as { id: number } | undefined;
+      if (!split) return;
+      db.prepare('UPDATE shared_split_shares SET settled = ? WHERE split_id = ? AND tenant = ?')
+        .run(settled ? 1 : 0, split.id, targetTenant ?? tenant);
+    });
+
+    res.json({ success: true, data: { success: true } });
+  } catch (err) {
+    console.error('PATCH /shared-accounts/:uuid/transactions/:txId/split/share error:', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

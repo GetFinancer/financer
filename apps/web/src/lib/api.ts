@@ -407,4 +407,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ amount, date, settlingTenant }),
     }),
+
+  settleShare: (uuid: string, txId: number, tenant: string, settled: boolean) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/transactions/${txId}/split/share`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tenant, settled }),
+    }),
 };

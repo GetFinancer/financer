@@ -371,6 +371,10 @@ export default function Dashboard() {
     });
   }
 
+  function refreshSharedAccounts() {
+    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
+  }
+
   async function handleSaveTransaction(e: React.FormEvent) {
     e.preventDefault();
 
@@ -385,6 +389,7 @@ export default function Dashboard() {
           description: txFormData.description || undefined,
           date: txFormData.date,
         });
+        refreshSharedAccounts();
       } else {
         const payload = {
           accountId: Number(txFormData.accountId),
@@ -423,6 +428,7 @@ export default function Dashboard() {
           description: txFormData.description || undefined,
           date: txFormData.date,
         });
+        refreshSharedAccounts();
       } else {
         const payload = {
           accountId: Number(txFormData.accountId),
@@ -788,11 +794,12 @@ export default function Dashboard() {
                 </div>
               )}
               {summary.accounts
-                .filter((account) => cardVisibility[`account_${account.id}`] !== false && (includeSharedAccounts || !sharedAccountIds.has(account.id)))
+                .filter((account) => cardVisibility[`account_${account.id}`] !== false)
                 .map((account) => (
                   <div key={account.id} className="kpi-card">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 truncate">
                       {account.name}
+                      {sharedAccountIds.has(account.id) && <span className="ml-1 opacity-50">🤝</span>}
                     </p>
                     <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}

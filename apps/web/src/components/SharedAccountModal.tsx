@@ -24,15 +24,14 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   const [loading, setLoading] = useState(true);
   const [invite, setInvite] = useState<{ token: string; expiresAt: string } | null>(null);
   const [showInvite, setShowInvite] = useState(false);
-  const [showSettle, setShowSettle] = useState(false);
-  const [settleAmount, setSettleAmount] = useState('');
-  const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10));
-  const [settleTenant, setSettleTenant] = useState('');
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [inviteDurationHours, setInviteDurationHours] = useState(48);
 
+  // Split panel state
+  const [openSplitTxId, setOpenSplitTxId] = useState<number | null>(null);
+  const [splitDraftAmounts, setSplitDraftAmounts] = useState<Record<number, Record<string, string>>>({});
 
   // Detect current tenant from hostname (e.g., alice.getfinancer.com -> alice)
   const currentTenant = account.isOwner
@@ -43,6 +42,15 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   const otherMembers = account.isOwner
     ? account.members
     : [{ tenant: account.ownerTenant, displayName: account.ownerTenant, joinedAt: '' }, ...account.members.filter(m => m.tenant !== currentTenant)];
+
+  // All members including owner, for split panel
+  const allMembersForSplit = [
+    { tenant: account.ownerTenant, displayName: account.isOwner ? t('sharedAccountsYou') : account.ownerTenant },
+    ...account.members.map(m => ({
+      tenant: m.tenant,
+      displayName: m.tenant === currentTenant ? t('sharedAccountsYou') : (m.displayName ?? m.tenant),
+    })),
+  ];
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -152,6 +160,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         setConfirmDialog(null);
         try {
           await api.deleteSharedTransaction(account.uuid, txId);
+          if (openSplitTxId === txId) setOpenSplitTxId(null);
           loadData();
         } catch (e) {
           setErrorMsg(t('errorDeleting'));
@@ -160,25 +169,57 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
     });
   }
 
-  async function handleSplitEqual(txId: number) {
+  // Fill split draft with equal amounts for all members
+  function fillEqualSplit(txId: number, amount: number) {
+    const count = allMembersForSplit.length;
+    const perPerson = Math.round((amount / count) * 100) / 100;
+    const amounts: Record<string, string> = {};
+    allMembersForSplit.forEach(m => { amounts[m.tenant] = String(perPerson); });
+    setSplitDraftAmounts(prev => ({ ...prev, [txId]: amounts }));
+  }
+
+  // Open/close split panel for a transaction
+  function toggleSplitPanel(txId: number, tx: TransactionWithDetails) {
+    if (openSplitTxId === txId) {
+      setOpenSplitTxId(null);
+      return;
+    }
+    setOpenSplitTxId(txId);
+    if (tx.split) {
+      // Pre-fill from existing split
+      const amounts: Record<string, string> = {};
+      tx.split.shares.forEach(s => { amounts[s.tenant] = String(s.amount); });
+      setSplitDraftAmounts(prev => ({ ...prev, [txId]: amounts }));
+    } else {
+      fillEqualSplit(txId, tx.amount);
+    }
+  }
+
+  function updateSplitAmount(txId: number, tenant: string, value: string) {
+    setSplitDraftAmounts(prev => ({
+      ...prev,
+      [txId]: { ...(prev[txId] ?? {}), [tenant]: value },
+    }));
+  }
+
+  async function handleApplySplit(txId: number) {
+    const amounts = splitDraftAmounts[txId] ?? {};
+    const shares: Record<string, number> = {};
+    for (const [tenant, amt] of Object.entries(amounts)) {
+      shares[tenant] = Number(amt);
+    }
     try {
-      await api.splitTransaction(account.uuid, txId, { type: 'equal' });
+      await api.splitTransaction(account.uuid, txId, { type: 'custom', shares });
+      setOpenSplitTxId(null);
       loadData();
     } catch (e) {
       setErrorMsg(t('errorSaving'));
     }
   }
 
-  async function handleSettleUp() {
-    if (!settleAmount || isNaN(Number(settleAmount))) {
-      setErrorMsg(t('confirmValidAmount'));
-      return;
-    }
+  async function handleToggleSettled(txId: number, tenant: string, currentSettled: boolean) {
     try {
-      await api.settleUp(account.uuid, Number(settleAmount), settleDate, settleTenant || undefined);
-      setShowSettle(false);
-      setSettleAmount('');
-      setErrorMsg(null);
+      await api.settleShare(account.uuid, txId, tenant, !currentSettled);
       loadData();
     } catch (e) {
       setErrorMsg(t('errorSaving'));
@@ -239,60 +280,18 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         {/* Balance Summary */}
         {balance && balance.balances.length > 0 && (
           <div className="px-6 py-3 border-b border-border bg-card/50">
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                {balance.balances.map(b => (
-                  <span key={b.tenant} className="mr-4">
-                    {b.owes > 0
-                      ? t('sharedAccountsOwes').replace('{name}', b.displayName ?? b.tenant).replace('{amount}', formatCurrency(b.owes, undefined, numberLocale))
-                      : t('sharedAccountsOwesYou').replace('{name}', b.displayName ?? b.tenant).replace('{amount}', formatCurrency(Math.abs(b.owes), undefined, numberLocale))
-                    }
-                  </span>
-                ))}
-                {balance.totalUnsettled === 0 && (
-                  <span className="text-green-500">{t('sharedAccountsSettled')}</span>
-                )}
-              </div>
-              {balance.totalUnsettled !== 0 && (
-                <button
-                  onClick={() => {
-                    setShowSettle(true);
-                    setSettleAmount(String(Math.abs(balance.totalUnsettled)));
-                    if (balance.balances[0]) setSettleTenant(balance.balances[0].tenant);
-                  }}
-                  className="text-sm px-3 py-1 nav-item-active rounded-full hover:opacity-90 transition-all"
-                >
-                  {t('sharedAccountsSettleUp')}
-                </button>
+            <div className="text-sm">
+              {balance.balances.map(b => (
+                <span key={b.tenant} className="mr-4">
+                  {b.owes > 0
+                    ? t('sharedAccountsOwes').replace('{name}', b.displayName ?? b.tenant).replace('{amount}', formatCurrency(b.owes, undefined, numberLocale))
+                    : t('sharedAccountsOwesYou').replace('{name}', b.displayName ?? b.tenant).replace('{amount}', formatCurrency(Math.abs(b.owes), undefined, numberLocale))
+                  }
+                </span>
+              ))}
+              {balance.totalUnsettled === 0 && (
+                <span className="text-green-500">{t('sharedAccountsSettled')}</span>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Settle Up Form */}
-        {showSettle && (
-          <div className="px-6 py-3 border-b border-border bg-card">
-            <div className="flex items-center gap-3 flex-wrap">
-              <input
-                type="number"
-                step="0.01"
-                value={settleAmount}
-                onChange={e => setSettleAmount(e.target.value)}
-                className="flex-1 min-w-0 px-3 py-2 rounded-md border border-border bg-background text-sm"
-                placeholder={t('sharedAccountsSettleAmount')}
-              />
-              <input
-                type="date"
-                value={settleDate}
-                onChange={e => setSettleDate(e.target.value)}
-                className="px-3 py-2 rounded-md border border-border bg-background text-sm"
-              />
-              <button onClick={handleSettleUp} className="px-3 py-2 nav-item-active rounded-md text-sm hover:opacity-90">
-                {t('sharedAccountsSettleConfirm')}
-              </button>
-              <button onClick={() => setShowSettle(false)} className="text-sm text-muted-foreground hover:text-foreground">
-                {t('cancel')}
-              </button>
             </div>
           </div>
         )}
@@ -317,7 +316,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         </div>
 
         {/* Transaction List */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-2">
+        <div className="flex-1 overflow-y-auto p-6 space-y-1">
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">{t('loading')}</div>
           ) : filteredTx.length === 0 ? (
@@ -325,40 +324,106 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
           ) : (
             filteredTx.map(tx => {
               const isMyTx = !tx.addedBy || tx.addedBy === currentTenant;
+              const isSplitOpen = openSplitTxId === tx.id;
               return (
-                <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, undefined, numberLocale)}
-                      </span>
-                      <span className="text-sm truncate">{tx.description || tx.categoryName}</span>
+                <div key={tx.id}>
+                  <div className="flex items-center justify-between py-2 border-b border-border/50">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                          {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, undefined, numberLocale)}
+                        </span>
+                        <span className="text-sm truncate">{tx.description || tx.categoryName}</span>
+                        {tx.split && (
+                          <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                            {t('sharedAccountsSplitDone')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {tx.date} · {isMyTx ? t('sharedAccountsYou') : (tx.addedBy ?? account.ownerTenant)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {tx.date} · {isMyTx ? t('sharedAccountsYou') : (tx.addedBy ?? account.ownerTenant)}
+                    <div className="flex items-center gap-1 ml-2">
+                      {tx.type === 'expense' && (
+                        <button
+                          onClick={() => toggleSplitPanel(tx.id, tx)}
+                          className={`text-xs px-2 py-1 rounded border transition-colors ${
+                            isSplitOpen
+                              ? 'border-primary/50 text-primary bg-primary/5'
+                              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-background hover:border-border'
+                          }`}
+                        >
+                          {tx.split ? t('sharedAccountsSplitDone') : t('sharedAccountsSplitOpen')}
+                        </button>
+                      )}
+                      {isMyTx && (
+                        <button
+                          onClick={() => handleDeleteTx(tx.id)}
+                          className="text-xs px-2 py-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded border border-transparent hover:border-destructive/20 transition-colors"
+                        >
+                          {t('sharedAccountsDeleteTx')}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    {tx.type === 'expense' && (
-                      <button
-                        onClick={() => setConfirmDialog({
-                          message: t('sharedAccountsSplitEqualConfirm').replace('{amount}', formatCurrency(tx.amount / (account.members.length + 1), undefined, numberLocale)),
-                          onConfirm: async () => { setConfirmDialog(null); await handleSplitEqual(tx.id); },
-                        })}
-                        className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-background rounded border border-transparent hover:border-border transition-colors"
-                      >
-                        {t('sharedAccountsSplitEqual')}
-                      </button>
-                    )}
-                    {isMyTx && (
-                      <button
-                        onClick={() => handleDeleteTx(tx.id)}
-                        className="text-xs px-2 py-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded border border-transparent hover:border-destructive/20 transition-colors"
-                      >
-                        {t('sharedAccountsDeleteTx')}
-                      </button>
-                    )}
-                  </div>
+
+                  {/* Split panel */}
+                  {isSplitOpen && (
+                    <div className="bg-card/40 border border-border/60 rounded-lg p-3 my-1 space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground">{t('sharedAccountsSplitTitle')}</div>
+                      {allMembersForSplit.map(member => {
+                        const share = tx.split?.shares.find(s => s.tenant === member.tenant);
+                        const draftAmt = splitDraftAmounts[tx.id]?.[member.tenant] ?? '';
+                        return (
+                          <div key={member.tenant} className="flex items-center gap-2">
+                            <span className="text-xs flex-1 truncate">{member.displayName}</span>
+                            <input
+                              type="number"
+                              value={draftAmt}
+                              onChange={e => updateSplitAmount(tx.id, member.tenant, e.target.value)}
+                              className="w-24 px-2 py-1 text-xs border border-border rounded bg-background text-right"
+                              step="0.01"
+                              min="0"
+                            />
+                            {tx.split && share !== undefined && (
+                              <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={share.settled}
+                                  onChange={() => handleToggleSettled(tx.id, member.tenant, share.settled)}
+                                  className="cursor-pointer"
+                                />
+                                <span className={share.settled ? 'text-green-500' : 'text-muted-foreground'}>
+                                  {t('sharedAccountsSplitSettled')}
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => fillEqualSplit(tx.id, tx.amount)}
+                          className="text-xs px-2 py-1 border border-border rounded hover:bg-background transition-colors"
+                        >
+                          {t('sharedAccountsSplitEqual')}
+                        </button>
+                        <button
+                          onClick={() => handleApplySplit(tx.id)}
+                          className="text-xs px-2 py-1 nav-item-active rounded hover:opacity-90 transition-all"
+                        >
+                          {t('sharedAccountsSplitApply')}
+                        </button>
+                        <button
+                          onClick={() => setOpenSplitTxId(null)}
+                          className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
+                        >
+                          {t('cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
