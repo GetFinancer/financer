@@ -664,7 +664,10 @@ export function isMemberOrOwner(uuid: string, tenant: string): 'owner' | 'member
 export function createInvite(uuid: string, durationHours = 48): string {
   const db = getDb();
   const token = randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+  // durationHours = 0 means unlimited (far-future expiry)
+  const expiresAt = durationHours === 0
+    ? '9999-12-31T23:59:59.000Z'
+    : new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
   const stmt = db.prepare('INSERT INTO shared_account_invites (token, shared_uuid, expires_at) VALUES (?, ?, ?)');
   stmt.run([token, uuid, expiresAt]);
   stmt.free();
@@ -689,7 +692,8 @@ export function consumeInvite(token: string): string | null {
   const invite = getInviteByToken(token);
   if (!invite) return null;
   if (invite.used) return null;
-  if (new Date(invite.expiresAt) < new Date()) return null;
+  const isUnlimited = invite.expiresAt.startsWith('9999');
+  if (!isUnlimited && new Date(invite.expiresAt) < new Date()) return null;
 
   const db = getDb();
   const stmt = db.prepare('UPDATE shared_account_invites SET used = 1 WHERE token = ?');

@@ -28,11 +28,11 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   const [settleAmount, setSettleAmount] = useState('');
   const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10));
   const [settleTenant, setSettleTenant] = useState('');
-  const [splitTxId, setSplitTxId] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [inviteDurationHours, setInviteDurationHours] = useState(48);
+
 
   // Detect current tenant from hostname (e.g., alice.getfinancer.com -> alice)
   const currentTenant = account.isOwner
@@ -341,7 +341,10 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                   <div className="flex items-center gap-1 ml-2">
                     {tx.type === 'expense' && (
                       <button
-                        onClick={() => setSplitTxId(splitTxId === tx.id ? null : tx.id)}
+                        onClick={() => setConfirmDialog({
+                          message: t('sharedAccountsSplitEqualConfirm').replace('{amount}', formatCurrency(tx.amount / (account.members.length + 1), undefined, numberLocale)),
+                          onConfirm: async () => { setConfirmDialog(null); await handleSplitEqual(tx.id); },
+                        })}
                         className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-background rounded border border-transparent hover:border-border transition-colors"
                       >
                         {t('sharedAccountsSplitEqual')}
@@ -384,6 +387,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                     <option value={48}>{t('sharedAccountsInvite48h')}</option>
                     <option value={168}>{t('sharedAccountsInvite7d')}</option>
                     <option value={720}>{t('sharedAccountsInvite30d')}</option>
+                    <option value={0}>{t('sharedAccountsInviteUnlimited')}</option>
                   </select>
                 </div>
                 <button
@@ -438,7 +442,9 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                 {buildInviteUrl(invite.token)}
               </a>
               <p className="text-xs text-muted-foreground">
-                {t('sharedAccountsInviteExpires').replace('{date}', new Date(invite.expiresAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US'))}
+                {invite.expiresAt.startsWith('9999')
+                  ? t('sharedAccountsInviteNoExpiry')
+                  : t('sharedAccountsInviteExpires').replace('{date}', new Date(invite.expiresAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US'))}
               </p>
               <div className="flex gap-2">
                 <button

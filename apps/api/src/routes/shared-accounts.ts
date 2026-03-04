@@ -106,7 +106,8 @@ sharedAccountsRouter.get('/join/:token', async (req, res) => {
       res.status(410).json({ success: false, error: 'Einladung wurde bereits verwendet / Invite already used' });
       return;
     }
-    if (new Date(invite.expiresAt) < new Date()) {
+    const isUnlimited = invite.expiresAt.startsWith('9999');
+    if (!isUnlimited && new Date(invite.expiresAt) < new Date()) {
       res.status(410).json({ success: false, error: 'Einladung abgelaufen / Invite expired' });
       return;
     }
@@ -223,7 +224,7 @@ sharedAccountsRouter.post('/:uuid/invite', (req, res) => {
       return;
     }
 
-    const durationHours = typeof req.body?.durationHours === 'number' && req.body.durationHours > 0
+    const durationHours = typeof req.body?.durationHours === 'number' && req.body.durationHours >= 0
       ? req.body.durationHours
       : 48;
     const token = createInvite(uuid, durationHours);
@@ -341,7 +342,7 @@ sharedAccountsRouter.get('/:uuid/transactions', async (req, res) => {
       categoryColor: t.category_color ?? undefined,
       parentCategoryName: t.parent_category_name ?? undefined,
       transferToAccountName: t.transfer_to_account_name ?? undefined,
-      addedBy: t.added_by ?? undefined,
+      addedBy: t.added_by ?? sa.ownerTenant,
     }));
 
     res.json({ success: true, data: mapped });

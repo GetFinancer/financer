@@ -441,6 +441,7 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsSettleAmount: 'Settlement amount',
   sharedAccountsSettleConfirm: 'Book settlement',
   sharedAccountsSplitEqual: 'Split equally',
+  sharedAccountsSplitEqualConfirm: 'Split this expense equally? Each person pays {amount}.',
   sharedAccountsSplitCustom: 'Custom split',
   sharedAccountsSplitTitle: 'Split expense',
   sharedAccountsSplitDone: 'Split',
@@ -472,6 +473,8 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsInvite48h: '48 hours',
   sharedAccountsInvite7d: '7 days',
   sharedAccountsInvite30d: '30 days',
+  sharedAccountsInviteUnlimited: 'No expiry',
+  sharedAccountsInviteNoExpiry: 'No expiry date',
   dashboardIncludeShared: 'Include shared accounts',
   txSharedAccountGroup: 'Shared Accounts',
 };

@@ -696,7 +696,7 @@ export default function Dashboard() {
                         <span className="text-sm">{t('dashboardRemaining')}</span>
                       </label>
 
-                      {sharedAccountIds.size > 0 && (
+                      {sharedAccounts.length > 0 && (
                         <>
                           <div className="border-t border-border pt-3 mt-3">
                             <label className="flex items-center gap-3 cursor-pointer">
@@ -796,6 +796,20 @@ export default function Dashboard() {
                     </p>
                     <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
+                    </p>
+                  </div>
+                ))}
+              {/* Member-shared account cards (live in owner's DB, not in summary.accounts) */}
+              {includeSharedAccounts && sharedAccounts
+                .filter(sa => !sa.isOwner)
+                .map(sa => (
+                  <div key={sa.uuid} className="kpi-card">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 truncate">
+                      {sa.accountName}
+                      <span className="ml-1 text-primary/60">🤝</span>
+                    </p>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                      {formatCurrency(sa.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
                 ))}
