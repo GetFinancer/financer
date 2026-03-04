@@ -15,6 +15,7 @@ export interface Account {
   billingDay?: number; // Day of month when billing cycle ends (e.g., 20)
   paymentDay?: number; // Day of month when payment is due (e.g., 27)
   linkedAccountId?: number; // Bank account that pays the credit card
+  sharedUuid?: string; // Set when account is shared via shared accounts feature
   createdAt: string;
   updatedAt: string;
 }

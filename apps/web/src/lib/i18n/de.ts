@@ -463,6 +463,8 @@ const de = {
   sharedAccountsModeJointDesc: 'Beide sehen alle Transaktionen – ideal für Partner oder WG-Konto.',
   sharedAccountsModePool: 'Ausgaben-Pool',
   sharedAccountsModePoolDesc: 'Ausgaben aufteilen & einzelne Anteile abhaken wenn bezahlt.',
+  sharedAccountsNoAccountsToShare: 'Alle deine Konten sind bereits geteilt.',
+  sharedAccountsSelectAccount: 'Konto auswählen',
 
   // Join page
   joinTitle: 'Einladung annehmen',

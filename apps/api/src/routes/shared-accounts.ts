@@ -13,7 +13,7 @@ import {
   deleteSharedAccount,
   isMemberOrOwner,
 } from '../db/registry.js';
-import type { SharedAccountInfo, SharedBalanceResult, TransactionWithDetails, TransactionSplit } from '@financer/shared';
+import type { SharedAccountInfo, SharedBalance, SharedBalanceResult, TransactionWithDetails, TransactionSplit } from '@financer/shared';
 
 export const sharedAccountsRouter = Router();
 
@@ -548,7 +548,7 @@ sharedAccountsRouter.patch('/:uuid/transactions/:txId/split/share', async (req, 
   }
 });
 
-// GET /shared-accounts/:uuid/balance — calculate who owes whom
+// GET /shared-accounts/:uuid/balance — calculate who owes whom (payer-aware, with netting)
 sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
   try {
     const tenant = currentTenant();
@@ -561,26 +561,93 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
     }
 
     const sa = getSharedAccount(uuid)!;
+    const allMembers = [sa.ownerTenant, ...sa.members.map(m => m.memberTenant)];
 
-    // Calculate balance from unsettled split shares
-    // Positive owes[tenant] means tenant owes owner
-    const balances = await inOwnerDb(sa.ownerTenant, () => {
-      const shares = db.prepare(`
-        SELECT sss.tenant, SUM(sss.amount) as total_owed
-        FROM shared_split_shares sss
-        JOIN shared_splits ss ON sss.split_id = ss.id
-        WHERE ss.shared_uuid = ? AND sss.settled = 0 AND sss.tenant != ?
-        GROUP BY sss.tenant
-      `).all(uuid, sa.ownerTenant) as { tenant: string; total_owed: number }[];
-      return shares;
-    });
+    // Find all shared accounts where ≥2 of our members participate (for cross-pool netting)
+    const memberSharedUuids: Record<string, Set<string>> = {};
+    for (const m of allMembers) {
+      const s = new Set<string>();
+      getOwnerSharedAccounts(m).forEach(x => s.add(x.uuid));
+      getMemberSharedAccounts(m).forEach(x => s.add(x.uuid));
+      memberSharedUuids[m] = s;
+    }
+    const uuidCount: Record<string, number> = {};
+    for (const m of allMembers) {
+      for (const u of memberSharedUuids[m]) {
+        uuidCount[u] = (uuidCount[u] ?? 0) + 1;
+      }
+    }
+    const relevantUuids = Object.keys(uuidCount).filter(u => uuidCount[u] >= 2);
+
+    // rawDebts[debtor][creditor] = amount
+    const rawDebts: Record<string, Record<string, number>> = {};
+    function addDebt(debtor: string, creditor: string, amount: number) {
+      if (debtor === creditor || amount <= 0) return;
+      if (!rawDebts[debtor]) rawDebts[debtor] = {};
+      rawDebts[debtor][creditor] = (rawDebts[debtor][creditor] ?? 0) + amount;
+    }
+
+    // Collect splits from all relevant shared accounts
+    for (const sharedUuid of relevantUuids) {
+      const sharedAcct = getSharedAccount(sharedUuid);
+      if (!sharedAcct) continue;
+
+      const splits = await inOwnerDb(sharedAcct.ownerTenant, () =>
+        db.prepare(`
+          SELECT sss.tenant, sss.amount, COALESCE(t.added_by, ?) as payer
+          FROM shared_split_shares sss
+          JOIN shared_splits ss ON sss.split_id = ss.id
+          JOIN transactions t ON ss.transaction_id = t.id
+          WHERE ss.shared_uuid = ? AND sss.settled = 0
+        `).all(sharedAcct.ownerTenant, sharedUuid) as { tenant: string; amount: number; payer: string }[]
+      );
+
+      for (const row of splits) {
+        // Only count debts between members of the CURRENT shared account
+        if (!allMembers.includes(row.tenant) || !allMembers.includes(row.payer)) continue;
+        if (row.tenant !== row.payer) {
+          addDebt(row.tenant, row.payer, row.amount);
+        }
+      }
+    }
+
+    // Net mutual debts for each pair of members
+    for (let i = 0; i < allMembers.length; i++) {
+      for (let j = i + 1; j < allMembers.length; j++) {
+        const a = allMembers[i], b = allMembers[j];
+        const aOwesB = rawDebts[a]?.[b] ?? 0;
+        const bOwesA = rawDebts[b]?.[a] ?? 0;
+        const net = Math.round((aOwesB - bOwesA) * 100) / 100;
+        if (net >= 0) {
+          if (net > 0) { if (!rawDebts[a]) rawDebts[a] = {}; rawDebts[a][b] = net; }
+          else if (rawDebts[a]) delete rawDebts[a][b];
+          if (rawDebts[b]) delete rawDebts[b][a];
+        } else {
+          const pos = Math.round(-net * 100) / 100;
+          if (!rawDebts[b]) rawDebts[b] = {};
+          rawDebts[b][a] = pos;
+          if (rawDebts[a]) delete rawDebts[a][b];
+        }
+      }
+    }
+
+    // Express from requesting tenant's perspective
+    const balances: SharedBalance[] = [];
+    let totalUnsettled = 0;
+    for (const otherTenant of allMembers) {
+      if (otherTenant === tenant) continue;
+      const otherOwesMe = rawDebts[otherTenant]?.[tenant] ?? 0;
+      const iOweThem = rawDebts[tenant]?.[otherTenant] ?? 0;
+      const net = Math.round((otherOwesMe - iOweThem) * 100) / 100;
+      if (net === 0) continue;
+      const member = sa.members.find(m => m.memberTenant === otherTenant);
+      balances.push({ tenant: otherTenant, displayName: member?.displayName ?? null, owes: net });
+      totalUnsettled += Math.abs(net);
+    }
 
     const result: SharedBalanceResult = {
-      balances: balances.map(b => {
-        const member = sa.members.find(m => m.memberTenant === b.tenant);
-        return { tenant: b.tenant, displayName: member?.displayName ?? b.tenant, owes: b.total_owed };
-      }),
-      totalUnsettled: balances.reduce((sum, b) => sum + b.total_owed, 0),
+      balances,
+      totalUnsettled: Math.round(totalUnsettled * 100) / 100,
     };
 
     res.json({ success: true, data: result });

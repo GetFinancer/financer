@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AccountWithBalance, AccountType, CreateAccountRequest, SharedAccountInfo } from '@financer/shared';
+import { AccountWithBalance, AccountType, CreateAccountRequest } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
-import SharedAccountModal from '@/components/SharedAccountModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function AccountsPage() {
@@ -22,9 +21,6 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
-  const [selectedShared, setSelectedShared] = useState<SharedAccountInfo | null>(null);
-  const [pendingShareAccountId, setPendingShareAccountId] = useState<number | null>(null);
   const [saveError, setSaveError] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
@@ -43,7 +39,6 @@ export default function AccountsPage() {
 
   useEffect(() => {
     loadAccounts();
-    loadSharedAccounts();
   }, []);
 
   async function loadAccounts() {
@@ -56,28 +51,6 @@ export default function AccountsPage() {
       setLoading(false);
     }
   }
-
-  async function loadSharedAccounts() {
-    try {
-      const data = await api.getSharedAccounts();
-      setSharedAccounts(data);
-    } catch {
-      // Silently fail — may not be cloudhost
-    }
-  }
-
-  async function handleShareAccount(id: number, mode: 'joint' | 'pool') {
-    setPendingShareAccountId(null);
-    try {
-      const result = await api.shareAccount(id, mode);
-      await loadSharedAccounts();
-      await loadAccounts();
-      // Open modal for the newly shared account
-      const shared = (await api.getSharedAccounts()).find(s => s.uuid === result.uuid);
-      if (shared) setSelectedShared(shared);
-    } catch {
-      setSaveError(t('errorSaving'));
-    }
   }
 
   function resetForm() {
@@ -162,6 +135,29 @@ export default function AccountsPage() {
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
+  function AccountTypeIcon({ type, className = 'w-5 h-5' }: { type: string; className?: string }) {
+    if (type === 'cash') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    );
+    if (type === 'credit') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    );
+    if (type === 'savings') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    );
+  }
+
   return (
     <>
       {confirmDialog && (
@@ -172,41 +168,6 @@ export default function AccountsPage() {
           confirmLabel={t('yes')}
           cancelLabel={t('cancel')}
         />
-      )}
-      {selectedShared && (
-        <SharedAccountModal
-          account={selectedShared}
-          onClose={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
-          onDeleted={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
-        />
-      )}
-
-      {/* Mode selection dialog */}
-      {pendingShareAccountId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPendingShareAccountId(null)}>
-          <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg">{t('sharedAccountsSelectMode')}</h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => handleShareAccount(pendingShareAccountId, 'joint')}
-                className="w-full text-left p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-card transition-colors"
-              >
-                <div className="font-medium">🤝 {t('sharedAccountsModeJoint')}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t('sharedAccountsModeJointDesc')}</div>
-              </button>
-              <button
-                onClick={() => handleShareAccount(pendingShareAccountId, 'pool')}
-                className="w-full text-left p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-card transition-colors"
-              >
-                <div className="font-medium">💰 {t('sharedAccountsModePool')}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t('sharedAccountsModePoolDesc')}</div>
-              </button>
-            </div>
-            <button onClick={() => setPendingShareAccountId(null)} className="text-sm text-muted-foreground hover:text-foreground">
-              {t('cancel')}
-            </button>
-          </div>
-        </div>
       )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -379,12 +340,14 @@ export default function AccountsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {accounts.map((account) => {
-              const shared = sharedAccounts.find(s => s.accountId === account.id && s.isOwner);
-              return (
+            {accounts.map((account) => (
               <div key={account.id} className="glass-card p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 text-muted-foreground flex-shrink-0">
+                      <AccountTypeIcon type={account.type} className="w-5 h-5" />
+                    </div>
+                    <div>
                     <h3 className="font-semibold flex items-center gap-2">
                       {account.name}
                       {account.isDefault && (
@@ -392,11 +355,8 @@ export default function AccountsPage() {
                           {t('accountsDefault')}
                         </span>
                       )}
-                      {shared && (
-                        <span
-                          className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full cursor-pointer hover:bg-blue-500/30 transition-colors"
-                          onClick={() => setSelectedShared(shared)}
-                        >
+                      {account.sharedUuid && (
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
                           {t('sharedAccountsShared')}
                         </span>
                       )}
@@ -415,6 +375,7 @@ export default function AccountsPage() {
                         )}
                       </p>
                     )}
+                    </div>
                   </div>
                   <span className={`text-xl font-bold ${account.balance >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(account.balance, undefined, numberLocale)}
@@ -432,15 +393,6 @@ export default function AccountsPage() {
                     {t('edit')}
                   </button>
                   <button
-                    onClick={() => shared ? setSelectedShared(shared) : setPendingShareAccountId(account.id)}
-                    className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    {t('sharedAccountsShare')}
-                  </button>
-                  <button
                     onClick={() => handleDelete(account.id)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md border border-transparent hover:border-destructive/20 transition-colors"
                   >
@@ -451,8 +403,7 @@ export default function AccountsPage() {
                   </button>
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
         )}
       </div>

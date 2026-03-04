@@ -285,6 +285,20 @@ export function deleteTenant(name: string): void {
     decrementStmt.run([code]);
     decrementStmt.free();
   }
+  // Delete owned shared accounts (CASCADE handles members & invites)
+  const ownedSharedStmt = db.prepare('SELECT uuid FROM shared_accounts WHERE owner_tenant = ?');
+  ownedSharedStmt.bind([name]);
+  const ownedUuids: string[] = [];
+  while (ownedSharedStmt.step()) { ownedUuids.push(ownedSharedStmt.get()[0] as string); }
+  ownedSharedStmt.free();
+  for (const uuid of ownedUuids) {
+    const d = db.prepare('DELETE FROM shared_accounts WHERE uuid = ?');
+    d.run([uuid]); d.free();
+  }
+  // Remove from all shared account memberships (member role)
+  const removeMemberStmt = db.prepare('DELETE FROM shared_account_members WHERE member_tenant = ?');
+  removeMemberStmt.run([name]);
+  removeMemberStmt.free();
   // Delete redemptions
   const stmt1 = db.prepare('DELETE FROM coupon_redemptions WHERE tenant_name = ?');
   stmt1.run([name]);

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { formatCurrency } from '@/lib/utils';
-import type { SharedAccountInfo } from '@financer/shared';
+import type { SharedAccountInfo, AccountWithBalance } from '@financer/shared';
 import SharedAccountModal from '@/components/SharedAccountModal';
 
 interface InvitePreview {
@@ -14,20 +14,31 @@ interface InvitePreview {
   expiresAt: string;
 }
 
+type Panel = 'none' | 'invite' | 'share';
+
 export default function SharedAccountsPage() {
   const { t, numberLocale, locale } = useTranslation();
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<SharedAccountInfo | null>(null);
 
-  // Einladungslink-Eingabe
-  const [showInviteInput, setShowInviteInput] = useState(false);
+  // Panel state
+  const [panel, setPanel] = useState<Panel>('none');
+
+  // Invite via link
   const [inviteInput, setInviteInput] = useState('');
   const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState(false);
+
+  // Share an account
+  const [ownAccounts, setOwnAccounts] = useState<AccountWithBalance[]>([]);
+  const [shareAccountId, setShareAccountId] = useState<number | null>(null);
+  const [shareMode, setShareMode] = useState<'joint' | 'pool'>('joint');
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   async function loadSharedAccounts() {
     try {
@@ -40,9 +51,32 @@ export default function SharedAccountsPage() {
     }
   }
 
+  async function loadOwnAccounts() {
+    try {
+      const data = await api.getAccounts();
+      // Only show accounts not already shared
+      setOwnAccounts(data.filter(a => !a.sharedUuid));
+    } catch {
+      // silently fail
+    }
+  }
+
   useEffect(() => {
     loadSharedAccounts();
   }, []);
+
+  function openPanel(p: Panel) {
+    setPanel(v => v === p ? 'none' : p);
+    if (p === 'share') loadOwnAccounts();
+    // reset invite form when switching
+    setInviteInput('');
+    setInvitePreview(null);
+    setInviteError(null);
+    setJoinSuccess(false);
+    setShareError(null);
+    setShareAccountId(null);
+    setShareMode('joint');
+  }
 
   // Token aus URL oder bare token extrahieren
   function extractToken(input: string): string {
@@ -75,7 +109,7 @@ export default function SharedAccountsPage() {
       await api.joinSharedAccount(token);
       setJoinSuccess(true);
       setTimeout(() => {
-        setShowInviteInput(false);
+        setPanel('none');
         setInviteInput('');
         setInvitePreview(null);
         setJoinSuccess(false);
@@ -88,12 +122,20 @@ export default function SharedAccountsPage() {
     }
   }
 
-  function resetInviteForm() {
-    setShowInviteInput(false);
-    setInviteInput('');
-    setInvitePreview(null);
-    setInviteError(null);
-    setJoinSuccess(false);
+  async function handleShare() {
+    if (!shareAccountId) return;
+    setSharing(true);
+    setShareError(null);
+    try {
+      await api.shareAccount(shareAccountId, shareMode);
+      setPanel('none');
+      setShareAccountId(null);
+      await loadSharedAccounts();
+    } catch (err: any) {
+      setShareError(err.message || t('errorSaving'));
+    } finally {
+      setSharing(false);
+    }
   }
 
   return (
@@ -101,30 +143,105 @@ export default function SharedAccountsPage() {
       {selected && (
         <SharedAccountModal
           account={selected}
-          onClose={() => setSelected(null)}
+          onClose={() => { loadSharedAccounts(); setSelected(null); }}
           onDeleted={() => { loadSharedAccounts(); setSelected(null); }}
         />
       )}
 
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold">{t('sharedAccountsTitle')}</h1>
             <p className="text-muted-foreground">{t('sharedAccountsSubtitle')}</p>
           </div>
-          <button
-            onClick={() => setShowInviteInput(v => !v)}
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            {t('sharedAccountsEnterLink')}
-          </button>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => openPanel('share')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'share' ? 'nav-item-active' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              {t('sharedAccountsShare')}
+            </button>
+            <button
+              onClick={() => openPanel('invite')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'invite' ? 'nav-item-active' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              {t('sharedAccountsEnterLink')}
+            </button>
+          </div>
         </div>
 
+        {/* Share an account panel */}
+        {panel === 'share' && (
+          <div className="glass-card p-5 space-y-4">
+            <h2 className="font-semibold text-sm">{t('sharedAccountsShare')}</h2>
+
+            {ownAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('sharedAccountsNoAccountsToShare')}</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide">{t('sharedAccountsSelectAccount')}</label>
+                  <div className="space-y-1">
+                    {ownAccounts.map(a => (
+                      <button
+                        key={a.id}
+                        onClick={() => setShareAccountId(a.id)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm border transition-colors ${shareAccountId === a.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-card'}`}
+                      >
+                        {a.name}
+                        <span className="ml-2 text-xs text-muted-foreground">{formatCurrency(a.balance, undefined, numberLocale)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide">{t('sharedAccountsSelectMode')}</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setShareMode('joint')}
+                      className={`text-left p-3 border rounded-lg transition-colors ${shareMode === 'joint' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-card'}`}
+                    >
+                      <div className="font-medium text-sm">{t('sharedAccountsModeJoint')}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{t('sharedAccountsModeJointDesc')}</div>
+                    </button>
+                    <button
+                      onClick={() => setShareMode('pool')}
+                      className={`text-left p-3 border rounded-lg transition-colors ${shareMode === 'pool' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-card'}`}
+                    >
+                      <div className="font-medium text-sm">{t('sharedAccountsModePool')}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{t('sharedAccountsModePoolDesc')}</div>
+                    </button>
+                  </div>
+                </div>
+
+                {shareError && <p className="text-sm text-destructive">{shareError}</p>}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleShare}
+                    disabled={!shareAccountId || sharing}
+                    className="px-4 py-2 nav-item-active rounded-full text-sm hover:opacity-90 disabled:opacity-50"
+                  >
+                    {sharing ? t('loading') : t('sharedAccountsShare')}
+                  </button>
+                  <button onClick={() => setPanel('none')} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                    {t('cancel')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Einladungslink-Formular */}
-        {showInviteInput && (
+        {panel === 'invite' && (
           <div className="glass-card p-5 space-y-4">
             <h2 className="font-semibold text-sm">{t('sharedAccountsEnterLink')}</h2>
 
@@ -146,7 +263,7 @@ export default function SharedAccountsPage() {
                 >
                   {inviteLoading ? t('loading') : t('sharedAccountsLinkCheck')}
                 </button>
-                <button onClick={resetInviteForm} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                <button onClick={() => setPanel('none')} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
                   {t('cancel')}
                 </button>
               </div>
@@ -186,7 +303,7 @@ export default function SharedAccountsPage() {
                   >
                     {joining ? t('joinAccepting') : t('joinAccept')}
                   </button>
-                  <button onClick={resetInviteForm} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-full">
+                  <button onClick={() => setPanel('none')} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-full">
                     {t('cancel')}
                   </button>
                 </div>

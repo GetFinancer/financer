@@ -195,11 +195,21 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
     }
   }
 
-  function updateSplitAmount(txId: number, tenant: string, value: string) {
-    setSplitDraftAmounts(prev => ({
-      ...prev,
-      [txId]: { ...(prev[txId] ?? {}), [tenant]: value },
-    }));
+  function updateSplitAmount(txId: number, changedTenant: string, value: string, txAmount: number) {
+    const lastMember = allMembersForSplit[allMembersForSplit.length - 1];
+    const current = splitDraftAmounts[txId] ?? {};
+    const updated = { ...current, [changedTenant]: value };
+
+    // Auto-fill last member's amount to make the sum equal to txAmount
+    if (changedTenant !== lastMember.tenant) {
+      const othersSum = allMembersForSplit
+        .slice(0, -1)
+        .reduce((sum, m) => sum + (Number(updated[m.tenant]) || 0), 0);
+      const remainder = Math.round((txAmount - othersSum) * 100) / 100;
+      updated[lastMember.tenant] = String(remainder >= 0 ? remainder : 0);
+    }
+
+    setSplitDraftAmounts(prev => ({ ...prev, [txId]: updated }));
   }
 
   async function handleApplySplit(txId: number) {
@@ -381,7 +391,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                             <input
                               type="number"
                               value={draftAmt}
-                              onChange={e => updateSplitAmount(tx.id, member.tenant, e.target.value)}
+                              onChange={e => updateSplitAmount(tx.id, member.tenant, e.target.value, tx.amount)}
                               className="w-24 px-2 py-1 text-xs border border-border rounded bg-background text-right"
                               step="0.01"
                               min="0"

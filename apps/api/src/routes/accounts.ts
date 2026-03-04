@@ -73,6 +73,7 @@ accountsRouter.get('/', (_req, res) => {
     paymentDay: a.payment_day ?? undefined,
     linkedAccountId: a.linked_account_id ?? undefined,
     linkedAccountName: a.linked_account_name ?? undefined,
+    sharedUuid: a.shared_uuid ?? undefined,
     createdAt: a.created_at,
     updatedAt: a.updated_at,
     balance: a.balance,

@@ -456,6 +456,8 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsModeJointDesc: 'Both see all transactions – ideal for partners or shared household.',
   sharedAccountsModePool: 'Expense pool',
   sharedAccountsModePoolDesc: 'Split expenses & check off individual shares when paid.',
+  sharedAccountsNoAccountsToShare: 'All your accounts are already shared.',
+  sharedAccountsSelectAccount: 'Select account',
 
   // Join page
   joinTitle: 'Accept invitation',
