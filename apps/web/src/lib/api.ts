@@ -350,9 +350,10 @@ export const api = {
       method: 'DELETE',
     }),
 
-  createInvite: (uuid: string) =>
+  createInvite: (uuid: string, durationHours = 48) =>
     fetchApi<SharedAccountInvite>(`/shared-accounts/${uuid}/invite`, {
       method: 'POST',
+      body: JSON.stringify({ durationHours }),
     }),
 
   getInvitePreview: (token: string) =>

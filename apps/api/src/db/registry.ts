@@ -661,10 +661,10 @@ export function isMemberOrOwner(uuid: string, tenant: string): 'owner' | 'member
   return null;
 }
 
-export function createInvite(uuid: string): string {
+export function createInvite(uuid: string, durationHours = 48): string {
   const db = getDb();
   const token = randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
   const stmt = db.prepare('INSERT INTO shared_account_invites (token, shared_uuid, expires_at) VALUES (?, ?, ?)');
   stmt.run([token, uuid, expiresAt]);
   stmt.free();

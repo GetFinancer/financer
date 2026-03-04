@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
+import { TransactionWithDetails, AccountWithBalance, Category, SharedAccountInfo } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
 import { RecurringQuickModal } from '@/components/RecurringQuickModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function TransactionsPage() {
   const { t, numberLocale } = useTranslation();
@@ -15,12 +16,14 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [saveError, setSaveError] = useState('');
   const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const autofillCategoryRef = useRef<string | null>(null); // tracks auto-filled categoryId
   // Form state
   const [formData, setFormData] = useState({
@@ -34,6 +37,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     loadData();
+    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
   }, []);
 
   // Prevent body scroll when modal is open on mobile
@@ -103,19 +107,30 @@ export default function TransactionsPage() {
     setSaveError('');
 
     try {
-      const payload = {
-        accountId: Number(formData.accountId),
-        categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
-        amount: Number(formData.amount),
-        type: formData.type,
-        description: formData.description || undefined,
-        date: formData.date,
-      };
-
-      if (editingId) {
-        await api.updateTransaction(editingId, payload);
+      const sharedPrefix = 'shared:';
+      if (formData.accountId.startsWith(sharedPrefix)) {
+        const uuid = formData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type as 'income' | 'expense',
+          description: formData.description || undefined,
+          date: formData.date,
+        });
       } else {
-        await api.createTransaction(payload);
+        const payload = {
+          accountId: Number(formData.accountId),
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type,
+          description: formData.description || undefined,
+          date: formData.date,
+        };
+        if (editingId) {
+          await api.updateTransaction(editingId, payload);
+        } else {
+          await api.createTransaction(payload);
+        }
       }
 
       resetForm();
@@ -132,6 +147,17 @@ export default function TransactionsPage() {
   async function handleSubmitAndContinue() {
     setSaveError('');
     try {
+      const sharedPrefix = 'shared:';
+      if (formData.accountId.startsWith(sharedPrefix)) {
+        const uuid = formData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type as 'income' | 'expense',
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      } else {
       const payload = {
         accountId: Number(formData.accountId),
         categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
@@ -141,16 +167,17 @@ export default function TransactionsPage() {
         date: formData.date,
       };
       await api.createTransaction(payload);
-      // Keep form open — reset only amount, description, category
-      setFormData(prev => ({
-        ...prev,
-        categoryId: '',
-        amount: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-      }));
-      loadData();
-    } catch (error) {
+    }
+    // Keep form open — reset only amount, description, category
+    setFormData(prev => ({
+      ...prev,
+      categoryId: '',
+      amount: '',
+      description: '',
+      date: new Date().toISOString().split('T')[0],
+    }));
+    loadData();
+  } catch (error) {
       if (isTrialExpiredError(error)) {
         setSaveError(t('trialExpiredWriteBlocked'));
       } else {
@@ -159,19 +186,19 @@ export default function TransactionsPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('transactionsConfirmDelete'))) return;
-
-    try {
-      await api.deleteTransaction(id);
-      loadData();
-    } catch (error) {
-      if (isTrialExpiredError(error)) {
-        setSaveError(t('trialExpiredWriteBlocked'));
-      } else {
-        setSaveError(t('errorDeleting'));
-      }
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('transactionsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteTransaction(id);
+          loadData();
+        } catch (error) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleCreateCategoryFromDesc(name: string) {
@@ -254,6 +281,15 @@ export default function TransactionsPage() {
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('transactionsTitle')}</h1>
@@ -373,6 +409,15 @@ export default function TransactionsPage() {
                         {acc.name}
                       </option>
                     ))}
+                    {sharedAccounts.length > 0 && (
+                      <optgroup label={t('txSharedAccountGroup')}>
+                        {sharedAccounts.map((sa) => (
+                          <option key={sa.uuid} value={`shared:${sa.uuid}`}>
+                            {sa.accountName}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 

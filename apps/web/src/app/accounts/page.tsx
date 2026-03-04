@@ -6,6 +6,7 @@ import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import SharedAccountModal from '@/components/SharedAccountModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function AccountsPage() {
   const { t, numberLocale } = useTranslation();
@@ -23,6 +24,8 @@ export default function AccountsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [selectedShared, setSelectedShared] = useState<SharedAccountInfo | null>(null);
+  const [saveError, setSaveError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -71,7 +74,7 @@ export default function AccountsPage() {
       const shared = sharedAccounts.find(s => s.uuid === result.uuid) ?? (await api.getSharedAccounts()).find(s => s.uuid === result.uuid);
       if (shared) setSelectedShared(shared);
     } catch {
-      alert(t('errorSaving'));
+      setSaveError(t('errorSaving'));
     }
   }
 
@@ -133,32 +136,41 @@ export default function AccountsPage() {
       loadAccounts();
     } catch (error: unknown) {
       if (isTrialExpiredError(error)) {
-        alert(t('trialExpiredWriteBlocked'));
+        setSaveError(t('trialExpiredWriteBlocked'));
       } else {
-        alert(error instanceof Error ? error.message : t('errorSaving'));
+        setSaveError(error instanceof Error ? error.message : t('errorSaving'));
       }
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('accountsConfirmDelete'))) return;
-
-    try {
-      await api.deleteAccount(id);
-      loadAccounts();
-    } catch (error: unknown) {
-      if (isTrialExpiredError(error)) {
-        alert(t('trialExpiredWriteBlocked'));
-      } else {
-        alert(error instanceof Error ? error.message : t('accountsDeleteFailed'));
-      }
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('accountsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteAccount(id);
+          loadAccounts();
+        } catch (error: unknown) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : (error instanceof Error ? error.message : t('accountsDeleteFailed')));
+        }
+      },
+    });
   }
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       {selectedShared && (
         <SharedAccountModal
           account={selectedShared}
@@ -184,6 +196,13 @@ export default function AccountsPage() {
             {showForm ? t('cancel') : t('accountsNewAccount')}
           </button>
         </div>
+
+        {saveError && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm flex justify-between">
+            {saveError}
+            <button onClick={() => setSaveError('')} className="ml-2 opacity-60 hover:opacity-100">×</button>
+          </div>
+        )}
 
         {/* Form */}
         {showForm && (

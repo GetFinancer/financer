@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AdminStats, AdminTenant, Coupon, CouponType, TenantPlan } from '@financer/shared';
 import { PasswordInput } from '@/components/PasswordInput';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const API_BASE = '/api/admin';
 
@@ -117,6 +118,8 @@ function TenantTable({
   const [extendDays, setExtendDays] = useState('30');
   const [tenantInfo, setTenantInfo] = useState<Record<string, { email: string; has2fa: boolean; hasPassword: boolean; mailerConfigured: boolean }>>({});
   const [pwResetStatus, setPwResetStatus] = useState<Record<string, string>>({});
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
   // Auto-load info for all tenants
   useEffect(() => {
@@ -147,10 +150,15 @@ function TenantTable({
     onRefresh();
   }
 
-  async function handleDelete(name: string) {
-    if (!confirm(`Delete tenant "${name}" and all data? This cannot be undone!`)) return;
-    await adminFetch(`/tenants/${name}`, { method: 'DELETE' });
-    onRefresh();
+  function handleDelete(name: string) {
+    setConfirmDialog({
+      message: `Delete tenant "${name}" and all data? This cannot be undone!`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await adminFetch(`/tenants/${name}`, { method: 'DELETE' });
+        onRefresh();
+      },
+    });
   }
 
   async function loadTenantInfo(name: string) {
@@ -165,31 +173,41 @@ function TenantTable({
   async function handleResetPassword(name: string) {
     const info = tenantInfo[name];
     if (!info?.email) {
-      alert('Password reset not possible: this tenant has no email address on file.\n\nThe user must add an email address in Settings first.');
+      setInfoMsg('Password reset not possible: this tenant has no email address on file. The user must add an email address in Settings first.');
       return;
     }
     if (!info?.mailerConfigured) {
-      alert('Password reset not possible: SMTP is not configured on this server.\n\nSet SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
+      setInfoMsg('Password reset not possible: SMTP is not configured on this server. Set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
       return;
     }
-    if (!confirm(`Send a temporary password to ${info.email}?`)) return;
-    try {
-      const result = await adminFetch<{ success: boolean; emailSentTo: string }>(`/tenants/${name}/reset-password`, { method: 'POST' });
-      setPwResetStatus(prev => ({ ...prev, [name]: `Email sent to ${result.emailSentTo}` }));
-    } catch (err: any) {
-      setPwResetStatus(prev => ({ ...prev, [name]: `Failed: ${err.message}` }));
-    }
+    setConfirmDialog({
+      message: `Send a temporary password to ${info.email}?`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          const result = await adminFetch<{ success: boolean; emailSentTo: string }>(`/tenants/${name}/reset-password`, { method: 'POST' });
+          setPwResetStatus(prev => ({ ...prev, [name]: `Email sent to ${result.emailSentTo}` }));
+        } catch (err: any) {
+          setPwResetStatus(prev => ({ ...prev, [name]: `Failed: ${err.message}` }));
+        }
+      },
+    });
   }
 
-  async function handleReset2FA(name: string) {
-    if (!confirm(`Reset 2FA for "${name}"? The user will need to set up 2FA again.`)) return;
-    try {
-      await adminFetch(`/tenants/${name}/reset-2fa`, { method: 'POST' });
-      alert(`2FA reset for "${name}".`);
-      loadTenantInfo(name);
-    } catch (err: any) {
-      alert(`Failed: ${err.message}`);
-    }
+  function handleReset2FA(name: string) {
+    setConfirmDialog({
+      message: `Reset 2FA for "${name}"? The user will need to set up 2FA again.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await adminFetch(`/tenants/${name}/reset-2fa`, { method: 'POST' });
+          setInfoMsg(`2FA reset for "${name}".`);
+          loadTenantInfo(name);
+        } catch (err: any) {
+          setInfoMsg(`Failed: ${err.message}`);
+        }
+      },
+    });
   }
 
   const statusColors: Record<TenantPlan, string> = {
@@ -201,6 +219,21 @@ function TenantTable({
 
   return (
     <div className="glass-card p-6 mb-8">
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+        />
+      )}
+      {infoMsg && (
+        <div className="mb-4 p-3 rounded-lg bg-card border border-border text-sm flex justify-between">
+          {infoMsg}
+          <button onClick={() => setInfoMsg(null)} className="ml-2 opacity-60 hover:opacity-100">×</button>
+        </div>
+      )}
       <h2 className="text-lg font-semibold mb-4">Tenants</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -389,6 +422,7 @@ function CouponSection({
   const [expiresAt, setExpiresAt] = useState('');
   const [stripeCouponId, setStripeCouponId] = useState('');
   const [error, setError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -417,10 +451,15 @@ function CouponSection({
     }
   }
 
-  async function handleDelete(couponCode: string) {
-    if (!confirm(`Delete coupon "${couponCode}"?`)) return;
-    await adminFetch(`/coupons/${couponCode}`, { method: 'DELETE' });
-    onRefresh();
+  function handleDelete(couponCode: string) {
+    setConfirmDialog({
+      message: `Delete coupon "${couponCode}"?`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await adminFetch(`/coupons/${couponCode}`, { method: 'DELETE' });
+        onRefresh();
+      },
+    });
   }
 
   const typeLabels: Record<CouponType, string> = {
@@ -437,6 +476,15 @@ function CouponSection({
 
   return (
     <div className="glass-card p-6">
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Coupons</h2>
         <button
@@ -594,6 +642,7 @@ function DiagnoseSection() {
   const [loading, setLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<Array<{ name: string; action: string }> | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   async function runDiagnose() {
     setLoading(true);
@@ -608,25 +657,39 @@ function DiagnoseSection() {
     }
   }
 
-  async function runCleanup() {
-    if (!confirm('Remove all orphaned registry entries (tenants without directory)?')) return;
-    setCleanupLoading(true);
-    setCleanupResult(null);
-    try {
-      const data = await adminFetch<{ success: boolean; cleaned: Array<{ name: string; action: string }> }>('/cleanup', { method: 'POST' });
-      setCleanupResult(data.cleaned);
-      runDiagnose();
-    } catch (err) {
-      console.error('Cleanup failed:', err);
-    } finally {
-      setCleanupLoading(false);
-    }
+  function runCleanup() {
+    setConfirmDialog({
+      message: 'Remove all orphaned registry entries (tenants without directory)?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setCleanupLoading(true);
+        setCleanupResult(null);
+        try {
+          const data = await adminFetch<{ success: boolean; cleaned: Array<{ name: string; action: string }> }>('/cleanup', { method: 'POST' });
+          setCleanupResult(data.cleaned);
+          runDiagnose();
+        } catch (err) {
+          console.error('Cleanup failed:', err);
+        } finally {
+          setCleanupLoading(false);
+        }
+      },
+    });
   }
 
   const orphanedCount = result?.tenants.filter(t => !t.hasDir).length ?? 0;
 
   return (
     <div className="glass-card p-6 mb-8">
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">System Diagnose</h2>
         <div className="flex gap-2">

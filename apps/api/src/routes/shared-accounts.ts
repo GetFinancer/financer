@@ -223,7 +223,10 @@ sharedAccountsRouter.post('/:uuid/invite', (req, res) => {
       return;
     }
 
-    const token = createInvite(uuid);
+    const durationHours = typeof req.body?.durationHours === 'number' && req.body.durationHours > 0
+      ? req.body.durationHours
+      : 48;
+    const token = createInvite(uuid, durationHours);
     const invite = getInviteByToken(token)!;
 
     res.json({ success: true, data: { token, sharedUuid: uuid, expiresAt: invite.expiresAt } });

@@ -14,6 +14,7 @@ import type {
   CreateRecurringExceptionRequest,
 } from '@financer/shared';
 import { useTranslation } from '@/lib/i18n';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function RecurringPage() {
   const { t, numberLocale } = useTranslation();
@@ -36,6 +37,7 @@ export default function RecurringPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Occurrences view state
   const [viewingOccurrences, setViewingOccurrences] = useState<RecurringTransactionWithDetails | null>(null);
@@ -164,15 +166,19 @@ export default function RecurringPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('recurringConfirmDelete'))) return;
-
-    try {
-      await api.deleteRecurringTransaction(id);
-      loadData();
-    } catch (err: any) {
-      setError(err.message || t('errorDeleting'));
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('recurringConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteRecurringTransaction(id);
+          loadData();
+        } catch (err: any) {
+          setError(err.message || t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleToggleActive(item: RecurringTransactionWithDetails) {
@@ -282,16 +288,20 @@ export default function RecurringPage() {
     }
 
     const formattedDate = new Date(editingOccurrence.date).toLocaleDateString(numberLocale);
-    if (!confirm(t('confirmApplyFuture', { amount: amount.toFixed(2) + ' \u20AC', date: formattedDate }))) return;
-
-    try {
-      await api.updateRecurringAmountFromDate(viewingOccurrences.id, amount, editingOccurrence.date);
-      closeExceptionEdit();
-      closeOccurrences();
-      loadData();
-    } catch (err: any) {
-      setError(err.message || t('errorSaving'));
-    }
+    setConfirmDialog({
+      message: t('confirmApplyFuture', { amount: amount.toFixed(2) + ' \u20AC', date: formattedDate }),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.updateRecurringAmountFromDate(viewingOccurrences.id, amount, editingOccurrence.date);
+          closeExceptionEdit();
+          closeOccurrences();
+          loadData();
+        } catch (err: any) {
+          setError(err.message || t('errorSaving'));
+        }
+      },
+    });
   }
 
   // Build hierarchical category list for dropdown
@@ -325,6 +335,15 @@ export default function RecurringPage() {
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('recurringTitle')}</h1>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { formatCurrency } from '@/lib/utils';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { SharedAccountInfo, TransactionWithDetails, SharedBalanceResult } from '@financer/shared';
 
 interface Props {
@@ -29,6 +30,9 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   const [settleTenant, setSettleTenant] = useState('');
   const [splitTxId, setSplitTxId] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [inviteDurationHours, setInviteDurationHours] = useState(48);
 
   // Detect current tenant from hostname (e.g., alice.getfinancer.com -> alice)
   const currentTenant = account.isOwner
@@ -67,19 +71,25 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
     return true;
   });
 
+  function buildInviteUrl(token: string): string {
+    if (typeof window === 'undefined') return token;
+    return `${window.location.protocol}//${window.location.host}/join/${token}`;
+  }
+
   async function handleCreateInvite() {
     try {
-      const data = await api.createInvite(account.uuid);
+      const data = await api.createInvite(account.uuid, inviteDurationHours);
       setInvite({ token: data.token, expiresAt: data.expiresAt });
       setShowInvite(true);
+      setErrorMsg(null);
     } catch (e) {
-      alert(t('errorSaving'));
+      setErrorMsg(t('errorSaving'));
     }
   }
 
   function handleCopyInvite() {
     if (!invite) return;
-    navigator.clipboard.writeText(invite.token);
+    navigator.clipboard.writeText(buildInviteUrl(invite.token));
     setCopied(true);
     setTimeout(() => {
       setCopied(false);
@@ -87,47 +97,67 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
     }, 1500);
   }
 
-  async function handleRemoveMember(memberTenant: string) {
-    if (!confirm(t('sharedAccountsRemoveMemberConfirm').replace('{tenant}', memberTenant))) return;
-    try {
-      await api.removeMember(account.uuid, memberTenant);
-      onDeleted(); // Refresh parent
-      onClose();
-    } catch (e) {
-      alert(t('errorDeleting'));
-    }
+  function handleRemoveMember(memberTenant: string) {
+    setConfirmDialog({
+      message: t('sharedAccountsRemoveMemberConfirm').replace('{tenant}', memberTenant),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.removeMember(account.uuid, memberTenant);
+          onDeleted();
+          onClose();
+        } catch (e) {
+          setErrorMsg(t('errorDeleting'));
+        }
+      },
+    });
   }
 
-  async function handleStopSharing() {
-    if (!confirm(t('sharedAccountsStopSharingConfirm'))) return;
-    try {
-      await api.deleteSharedAccount(account.uuid);
-      onDeleted();
-      onClose();
-    } catch (e) {
-      alert(t('errorDeleting'));
-    }
+  function handleStopSharing() {
+    setConfirmDialog({
+      message: t('sharedAccountsStopSharingConfirm'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteSharedAccount(account.uuid);
+          onDeleted();
+          onClose();
+        } catch (e) {
+          setErrorMsg(t('errorDeleting'));
+        }
+      },
+    });
   }
 
-  async function handleLeave() {
-    if (!confirm(t('sharedAccountsLeaveConfirm'))) return;
-    try {
-      await api.removeMember(account.uuid, currentTenant);
-      onDeleted();
-      onClose();
-    } catch (e) {
-      alert(t('errorDeleting'));
-    }
+  function handleLeave() {
+    setConfirmDialog({
+      message: t('sharedAccountsLeaveConfirm'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.removeMember(account.uuid, currentTenant);
+          onDeleted();
+          onClose();
+        } catch (e) {
+          setErrorMsg(t('errorDeleting'));
+        }
+      },
+    });
   }
 
-  async function handleDeleteTx(txId: number) {
-    if (!confirm(t('transactionsConfirmDelete'))) return;
-    try {
-      await api.deleteSharedTransaction(account.uuid, txId);
-      loadData();
-    } catch (e) {
-      alert(t('errorDeleting'));
-    }
+  function handleDeleteTx(txId: number) {
+    setConfirmDialog({
+      message: t('transactionsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteSharedTransaction(account.uuid, txId);
+          loadData();
+        } catch (e) {
+          setErrorMsg(t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleSplitEqual(txId: number) {
@@ -135,22 +165,23 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
       await api.splitTransaction(account.uuid, txId, { type: 'equal' });
       loadData();
     } catch (e) {
-      alert(t('errorSaving'));
+      setErrorMsg(t('errorSaving'));
     }
   }
 
   async function handleSettleUp() {
     if (!settleAmount || isNaN(Number(settleAmount))) {
-      alert(t('confirmValidAmount'));
+      setErrorMsg(t('confirmValidAmount'));
       return;
     }
     try {
       await api.settleUp(account.uuid, Number(settleAmount), settleDate, settleTenant || undefined);
       setShowSettle(false);
       setSettleAmount('');
+      setErrorMsg(null);
       loadData();
     } catch (e) {
-      alert(t('errorSaving'));
+      setErrorMsg(t('errorSaving'));
     }
   }
 
@@ -162,6 +193,16 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
+        {confirmDialog && (
+          <ConfirmDialog
+            message={confirmDialog.message}
+            onConfirm={confirmDialog.onConfirm}
+            onCancel={() => setConfirmDialog(null)}
+            confirmLabel={t('yes')}
+            cancelLabel={t('cancel')}
+          />
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-border">
           <div>
@@ -186,6 +227,14 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
             </svg>
           </button>
         </div>
+
+        {/* Inline error */}
+        {errorMsg && (
+          <div className="px-6 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center justify-between">
+            <p className="text-sm text-destructive">{errorMsg}</p>
+            <button onClick={() => setErrorMsg(null)} className="text-destructive/60 hover:text-destructive ml-4">×</button>
+          </div>
+        )}
 
         {/* Balance Summary */}
         {balance && balance.balances.length > 0 && (
@@ -315,15 +364,28 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
 
         {/* Footer Actions */}
         <div className="border-t border-border p-4 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {account.isOwner && (
               <>
-                <button
-                  onClick={handleCreateInvite}
-                  className="text-sm px-3 py-2 rounded-md border border-border hover:bg-card transition-colors"
-                >
-                  {t('sharedAccountsInviteCreate')}
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleCreateInvite}
+                    className="text-sm px-3 py-2 rounded-md border border-border hover:bg-card transition-colors"
+                  >
+                    {t('sharedAccountsInviteCreate')}
+                  </button>
+                  <select
+                    value={inviteDurationHours}
+                    onChange={e => setInviteDurationHours(Number(e.target.value))}
+                    className="text-xs px-2 py-2 rounded-md border border-border bg-background text-muted-foreground focus:outline-none"
+                    title={t('sharedAccountsInviteDuration')}
+                  >
+                    <option value={24}>{t('sharedAccountsInvite24h')}</option>
+                    <option value={48}>{t('sharedAccountsInvite48h')}</option>
+                    <option value={168}>{t('sharedAccountsInvite7d')}</option>
+                    <option value={720}>{t('sharedAccountsInvite30d')}</option>
+                  </select>
+                </div>
                 <button
                   onClick={handleStopSharing}
                   className="text-sm px-3 py-2 rounded-md border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors"
@@ -366,9 +428,15 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
             <div className="bg-background border border-border rounded-lg p-6 w-full max-w-sm space-y-4">
               <h3 className="font-semibold">{t('sharedAccountsInviteCreate')}</h3>
               <p className="text-xs text-muted-foreground">{t('sharedAccountsInviteTokenHint')}</p>
-              <div className="bg-card border border-border rounded p-3 text-sm font-mono break-all select-all">
-                {invite.token}
-              </div>
+              <a
+                href={buildInviteUrl(invite.token)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-card border border-border rounded p-3 text-sm font-mono break-all select-all hover:border-primary/50 transition-colors"
+                onClick={e => e.preventDefault()}
+              >
+                {buildInviteUrl(invite.token)}
+              </a>
               <p className="text-xs text-muted-foreground">
                 {t('sharedAccountsInviteExpires').replace('{date}', new Date(invite.expiresAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US'))}
               </p>

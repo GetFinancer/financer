@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Category, CategoryType } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const defaultColors = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981',
@@ -16,6 +17,8 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -78,9 +81,9 @@ export default function CategoriesPage() {
       loadCategories();
     } catch (error: any) {
       if (isTrialExpiredError(error)) {
-        alert(t('trialExpiredWriteBlocked'));
+        setSaveError(t('trialExpiredWriteBlocked'));
       } else {
-        alert(error.message || t('errorSaving'));
+        setSaveError(error.message || t('errorSaving'));
       }
     }
   }
@@ -103,15 +106,19 @@ export default function CategoriesPage() {
     setShowForm(true);
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('categoriesConfirmDelete'))) return;
-
-    try {
-      await api.deleteCategory(id);
-      loadCategories();
-    } catch (error: any) {
-      alert(error.message || t('categoriesDeleteFailed'));
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('categoriesConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteCategory(id);
+          loadCategories();
+        } catch (error: any) {
+          setSaveError(error.message || t('categoriesDeleteFailed'));
+        }
+      },
+    });
   }
 
   // Get root categories (without parent) by type
@@ -120,6 +127,15 @@ export default function CategoriesPage() {
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('categoriesTitle')}</h1>
@@ -133,6 +149,13 @@ export default function CategoriesPage() {
             {showForm ? t('cancel') : t('categoriesNewCategory')}
           </button>
         </div>
+
+        {saveError && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm flex justify-between">
+            {saveError}
+            <button onClick={() => setSaveError('')} className="ml-2 opacity-60 hover:opacity-100">×</button>
+          </div>
+        )}
 
         {/* Form */}
         {showForm && (

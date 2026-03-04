@@ -420,7 +420,7 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsOwner: 'Owner',
   sharedAccountsYou: 'You',
   sharedAccountsInviteCreate: 'Create invite link',
-  sharedAccountsInviteCopy: 'Link copied!',
+  sharedAccountsInviteCopy: 'Copy link',
   sharedAccountsInviteExpires: 'Expires: {date}',
   sharedAccountsStopSharing: 'Stop sharing',
   sharedAccountsStopSharingConfirm: 'Stop sharing? All members will lose access.',
@@ -465,8 +465,15 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsEnterLink: 'Enter invitation',
   sharedAccountsLinkPlaceholder: 'Paste invitation code...',
   sharedAccountsLinkCheck: 'Check',
-  sharedAccountsInviteTokenHint: 'Share this code with the person you want to invite.',
+  sharedAccountsInviteTokenHint: 'Share this link with the person you want to invite.',
   sharedAccountsInviteCopied: 'Copied ✓',
+  sharedAccountsInviteDuration: 'Validity duration',
+  sharedAccountsInvite24h: '24 hours',
+  sharedAccountsInvite48h: '48 hours',
+  sharedAccountsInvite7d: '7 days',
+  sharedAccountsInvite30d: '30 days',
+  dashboardIncludeShared: 'Include shared accounts',
+  txSharedAccountGroup: 'Shared Accounts',
 };
 
 export default en;

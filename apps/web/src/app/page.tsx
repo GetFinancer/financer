@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptionRequest, CreditCardBillWithDetails, TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
+import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptionRequest, CreditCardBillWithDetails, TransactionWithDetails, AccountWithBalance, Category, SharedAccountInfo } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
 import { RecurringQuickModal } from '@/components/RecurringQuickModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function Dashboard() {
   const { t, numberLocale } = useTranslation();
@@ -73,6 +74,10 @@ export default function Dashboard() {
     remainingBudget: true,
   });
   const [showCardSettings, setShowCardSettings] = useState(false);
+  const [includeSharedAccounts, setIncludeSharedAccounts] = useState(false);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
+  const [saveError, setSaveError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Swipe-to-dismiss state
   const [modalDragY, setModalDragY] = useState(0);
@@ -93,7 +98,18 @@ export default function Dashboard() {
     if (savedHideCompleted) {
       setHideCompleted(savedHideCompleted === 'true');
     }
+    const savedIncludeShared = localStorage.getItem('dashboardIncludeShared');
+    if (savedIncludeShared) {
+      setIncludeSharedAccounts(savedIncludeShared === 'true');
+    }
+    // Load shared accounts (silently fail if not cloudhost)
+    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
   }, []);
+
+  function updateIncludeShared(val: boolean) {
+    setIncludeSharedAccounts(val);
+    localStorage.setItem('dashboardIncludeShared', String(val));
+  }
 
   // Save card visibility to localStorage
   function updateCardVisibility(key: string, visible: boolean) {
@@ -237,7 +253,7 @@ export default function Dashboard() {
     try {
       const amount = parseFloat(editAmount);
       if (isNaN(amount) || amount <= 0) {
-        alert(t('confirmValidAmount'));
+        setSaveError(t('confirmValidAmount'));
         return;
       }
 
@@ -262,24 +278,27 @@ export default function Dashboard() {
       loadInstances(false);
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
   async function handleResetInstanceException() {
     if (!editingInstance || !editingInstance.exceptionId) return;
 
-    if (!confirm(t('confirmResetException'))) return;
-
-    try {
-      await api.deleteRecurringException(editingInstance.recurringId, editingInstance.exceptionId);
-      closeEditInstance();
-      loadInstances(false);
-      loadDashboard();
-    } catch (error) {
-      console.error('Failed to reset exception:', error);
-      alert(t('errorResetting'));
-    }
+    setConfirmDialog({
+      message: t('confirmResetException'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteRecurringException(editingInstance.recurringId, editingInstance.exceptionId!);
+          closeEditInstance();
+          loadInstances(false);
+          loadDashboard();
+        } catch (error) {
+          setSaveError(t('errorResetting'));
+        }
+      },
+    });
   }
 
   async function handleApplyToFuture() {
@@ -287,21 +306,24 @@ export default function Dashboard() {
 
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount <= 0) {
-      alert(t('confirmValidAmount'));
+      setSaveError(t('confirmValidAmount'));
       return;
     }
 
-    if (!confirm(t('confirmApplyFuture', { amount: formatCurrency(amount, 'EUR', numberLocale), date: formatDate(editingInstance.dueDate, numberLocale) }))) return;
-
-    try {
-      await api.updateRecurringAmountFromDate(editingInstance.recurringId, amount, editingInstance.dueDate);
-      closeEditInstance();
-      loadInstances(false);
-      loadDashboard();
-    } catch (error) {
-      console.error('Failed to apply to future:', error);
-      alert(t('errorApplying'));
-    }
+    setConfirmDialog({
+      message: t('confirmApplyFuture', { amount: formatCurrency(amount, 'EUR', numberLocale), date: formatDate(editingInstance.dueDate, numberLocale) }),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.updateRecurringAmountFromDate(editingInstance.recurringId, amount, editingInstance.dueDate);
+          closeEditInstance();
+          loadInstances(false);
+          loadDashboard();
+        } catch (error) {
+          setSaveError(t('errorApplying'));
+        }
+      },
+    });
   }
 
   // Transaction modal functions
@@ -353,45 +375,68 @@ export default function Dashboard() {
     e.preventDefault();
 
     try {
-      const payload = {
-        accountId: Number(txFormData.accountId),
-        categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
-        amount: Number(txFormData.amount),
-        type: txFormData.type,
-        description: txFormData.description || undefined,
-        date: txFormData.date,
-        transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
-          ? Number(txFormData.transferToAccountId)
-          : undefined,
-      };
-
-      if (editingTransaction) {
-        await api.updateTransaction(editingTransaction.id, payload);
+      const sharedPrefix = 'shared:';
+      if (txFormData.accountId.startsWith(sharedPrefix)) {
+        const uuid = txFormData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type as 'income' | 'expense',
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+        });
       } else {
-        await api.createTransaction(payload);
+        const payload = {
+          accountId: Number(txFormData.accountId),
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type,
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+          transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
+            ? Number(txFormData.transferToAccountId)
+            : undefined,
+        };
+        if (editingTransaction) {
+          await api.updateTransaction(editingTransaction.id, payload);
+        } else {
+          await api.createTransaction(payload);
+        }
       }
       closeTransactionModal();
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
   async function handleSaveAndContinueTransaction() {
     try {
-      const payload = {
-        accountId: Number(txFormData.accountId),
-        categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
-        amount: Number(txFormData.amount),
-        type: txFormData.type,
-        description: txFormData.description || undefined,
-        date: txFormData.date,
-        transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
-          ? Number(txFormData.transferToAccountId)
-          : undefined,
-      };
-      await api.createTransaction(payload);
+      const sharedPrefix = 'shared:';
+      if (txFormData.accountId.startsWith(sharedPrefix)) {
+        const uuid = txFormData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type as 'income' | 'expense',
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+        });
+      } else {
+        const payload = {
+          accountId: Number(txFormData.accountId),
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type,
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+          transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
+            ? Number(txFormData.transferToAccountId)
+            : undefined,
+        };
+        await api.createTransaction(payload);
+      }
       // Keep form open — reset only amount, description, category
       setTxFormData(prev => ({
         ...prev,
@@ -403,21 +448,25 @@ export default function Dashboard() {
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
-  async function handleDeleteTransaction(id: number) {
-    if (!confirm(t('transactionsConfirmDelete'))) return;
-
-    try {
-      await api.deleteTransaction(id);
-      closeTransactionModal();
-      loadRecentTransactions();
-      loadDashboard();
-    } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
-    }
+  function handleDeleteTransaction(id: number) {
+    setConfirmDialog({
+      message: t('transactionsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteTransaction(id);
+          closeTransactionModal();
+          loadRecentTransactions();
+          loadDashboard();
+        } catch (error) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleCreateTxCategoryFromDesc(name: string) {
@@ -558,8 +607,26 @@ export default function Dashboard() {
     ? summary.budgetBalance + pendingIncome - pendingExpenses
     : 0;
 
+  // Shared account IDs owned by this tenant
+  const sharedAccountIds = new Set(sharedAccounts.filter(s => s.isOwner).map(s => s.accountId));
+
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
+      {saveError && (
+        <div className="fixed top-4 right-4 z-[300] p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm shadow-lg flex items-center gap-3">
+          {saveError}
+          <button onClick={() => setSaveError('')} className="opacity-60 hover:opacity-100">×</button>
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-8 text-muted-foreground">{t('loading')}</div>
       ) : !summary ? (
@@ -629,6 +696,21 @@ export default function Dashboard() {
                         <span className="text-sm">{t('dashboardRemaining')}</span>
                       </label>
 
+                      {sharedAccountIds.size > 0 && (
+                        <>
+                          <div className="border-t border-border pt-3 mt-3">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={includeSharedAccounts}
+                                onChange={(e) => updateIncludeShared(e.target.checked)}
+                                className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
+                              />
+                              <span className="text-sm">{t('dashboardIncludeShared')}</span>
+                            </label>
+                          </div>
+                        </>
+                      )}
                       {summary.accounts.length > 0 && (
                         <>
                           <div className="border-t border-border pt-3 mt-3">
@@ -706,7 +788,7 @@ export default function Dashboard() {
                 </div>
               )}
               {summary.accounts
-                .filter((account) => cardVisibility[`account_${account.id}`] !== false)
+                .filter((account) => cardVisibility[`account_${account.id}`] !== false && (includeSharedAccounts || !sharedAccountIds.has(account.id)))
                 .map((account) => (
                   <div key={account.id} className="kpi-card">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 truncate">
@@ -1348,6 +1430,15 @@ export default function Dashboard() {
                       {acc.name}
                     </option>
                   ))}
+                  {sharedAccounts.length > 0 && (
+                    <optgroup label={t('txSharedAccountGroup')}>
+                      {sharedAccounts.map((sa) => (
+                        <option key={sa.uuid} value={`shared:${sa.uuid}`}>
+                          {sa.accountName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
