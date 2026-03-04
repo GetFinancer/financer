@@ -250,7 +250,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
             <h2 className="text-lg font-bold flex items-center gap-2">
               {account.accountName}
               <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-normal">
-                {t('sharedAccountsShared')}
+                {account.mode === 'pool' ? t('sharedAccountsModePool') : t('sharedAccountsModeJoint')}
               </span>
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -277,8 +277,8 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
           </div>
         )}
 
-        {/* Balance Summary */}
-        {balance && balance.balances.length > 0 && (
+        {/* Balance Summary — only for pool mode */}
+        {account.mode === 'pool' && balance && balance.balances.length > 0 && (
           <div className="px-6 py-3 border-b border-border bg-card/50">
             <div className="text-sm">
               {balance.balances.map(b => (
@@ -345,7 +345,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                       </div>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
-                      {tx.type === 'expense' && (
+                      {tx.type === 'expense' && account.mode === 'pool' && (
                         <button
                           onClick={() => toggleSplitPanel(tx.id, tx)}
                           className={`text-xs px-2 py-1 rounded border transition-colors ${

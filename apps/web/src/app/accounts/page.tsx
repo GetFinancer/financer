@@ -24,6 +24,7 @@ export default function AccountsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [selectedShared, setSelectedShared] = useState<SharedAccountInfo | null>(null);
+  const [pendingShareAccountId, setPendingShareAccountId] = useState<number | null>(null);
   const [saveError, setSaveError] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
@@ -65,13 +66,14 @@ export default function AccountsPage() {
     }
   }
 
-  async function handleShareAccount(id: number) {
+  async function handleShareAccount(id: number, mode: 'joint' | 'pool') {
+    setPendingShareAccountId(null);
     try {
-      const result = await api.shareAccount(id);
+      const result = await api.shareAccount(id, mode);
       await loadSharedAccounts();
       await loadAccounts();
       // Open modal for the newly shared account
-      const shared = sharedAccounts.find(s => s.uuid === result.uuid) ?? (await api.getSharedAccounts()).find(s => s.uuid === result.uuid);
+      const shared = (await api.getSharedAccounts()).find(s => s.uuid === result.uuid);
       if (shared) setSelectedShared(shared);
     } catch {
       setSaveError(t('errorSaving'));
@@ -177,6 +179,34 @@ export default function AccountsPage() {
           onClose={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
           onDeleted={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
         />
+      )}
+
+      {/* Mode selection dialog */}
+      {pendingShareAccountId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPendingShareAccountId(null)}>
+          <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg">{t('sharedAccountsSelectMode')}</h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleShareAccount(pendingShareAccountId, 'joint')}
+                className="w-full text-left p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-card transition-colors"
+              >
+                <div className="font-medium">🤝 {t('sharedAccountsModeJoint')}</div>
+                <div className="text-sm text-muted-foreground mt-1">{t('sharedAccountsModeJointDesc')}</div>
+              </button>
+              <button
+                onClick={() => handleShareAccount(pendingShareAccountId, 'pool')}
+                className="w-full text-left p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-card transition-colors"
+              >
+                <div className="font-medium">💰 {t('sharedAccountsModePool')}</div>
+                <div className="text-sm text-muted-foreground mt-1">{t('sharedAccountsModePoolDesc')}</div>
+              </button>
+            </div>
+            <button onClick={() => setPendingShareAccountId(null)} className="text-sm text-muted-foreground hover:text-foreground">
+              {t('cancel')}
+            </button>
+          </div>
+        </div>
       )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -402,7 +432,7 @@ export default function AccountsPage() {
                     {t('edit')}
                   </button>
                   <button
-                    onClick={() => shared ? setSelectedShared(shared) : handleShareAccount(account.id)}
+                    onClick={() => shared ? setSelectedShared(shared) : setPendingShareAccountId(account.id)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

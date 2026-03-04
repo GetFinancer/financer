@@ -12,7 +12,6 @@ import {
   removeMember,
   deleteSharedAccount,
   isMemberOrOwner,
-  getSharedAccountByOwnerAndAccountId,
 } from '../db/registry.js';
 import type { SharedAccountInfo, SharedBalanceResult, TransactionWithDetails, TransactionSplit } from '@financer/shared';
 
@@ -66,6 +65,7 @@ sharedAccountsRouter.get('/', async (_req, res) => {
         createdAt: sa.createdAt,
         members: full.members.map(m => ({ tenant: m.memberTenant, displayName: m.displayName, joinedAt: m.joinedAt })),
         isOwner: true,
+        mode: sa.mode,
       });
     }
 
@@ -83,6 +83,7 @@ sharedAccountsRouter.get('/', async (_req, res) => {
         createdAt: sa.createdAt,
         members: full.members.map(m => ({ tenant: m.memberTenant, displayName: m.displayName, joinedAt: m.joinedAt })),
         isOwner: false,
+        mode: full.mode,
       });
     }
 
@@ -199,6 +200,7 @@ sharedAccountsRouter.get('/:uuid', async (req, res) => {
       createdAt: sa.createdAt,
       members: sa.members.map(m => ({ tenant: m.memberTenant, displayName: m.displayName, joinedAt: m.joinedAt })),
       isOwner: role === 'owner',
+      mode: sa.mode,
     };
 
     res.json({ success: true, data: result });

@@ -92,6 +92,11 @@ export async function initRegistry() {
     )
   `);
 
+  // Migration: add mode column if missing
+  try {
+    registryDb.run(`ALTER TABLE shared_accounts ADD COLUMN mode TEXT NOT NULL DEFAULT 'joint'`);
+  } catch (_) { /* already exists */ }
+
   registryDb.run(`
     CREATE TABLE IF NOT EXISTS shared_account_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -561,6 +566,7 @@ export interface SharedAccountRecord {
   ownerTenant: string;
   accountId: number;
   createdAt: string;
+  mode: 'joint' | 'pool';
 }
 
 export interface SharedAccountMemberRecord {
@@ -569,11 +575,11 @@ export interface SharedAccountMemberRecord {
   joinedAt: string;
 }
 
-export function createSharedAccount(ownerTenant: string, accountId: number): string {
+export function createSharedAccount(ownerTenant: string, accountId: number, mode: 'joint' | 'pool' = 'joint'): string {
   const db = getDb();
   const uuid = randomUUID();
-  const stmt = db.prepare('INSERT INTO shared_accounts (uuid, owner_tenant, account_id) VALUES (?, ?, ?)');
-  stmt.run([uuid, ownerTenant, accountId]);
+  const stmt = db.prepare('INSERT INTO shared_accounts (uuid, owner_tenant, account_id, mode) VALUES (?, ?, ?, ?)');
+  stmt.run([uuid, ownerTenant, accountId, mode]);
   stmt.free();
   saveRegistry();
   return uuid;
@@ -602,7 +608,7 @@ export function getSharedAccount(uuid: string): (SharedAccountRecord & { members
   }
   mStmt.free();
 
-  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at, members };
+  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at, mode: (row.mode ?? 'joint') as 'joint' | 'pool', members };
 }
 
 export function getSharedAccountByOwnerAndAccountId(ownerTenant: string, accountId: number): SharedAccountRecord | null {
@@ -615,13 +621,13 @@ export function getSharedAccountByOwnerAndAccountId(ownerTenant: string, account
   stmt.free();
   const row: Record<string, any> = {};
   cols.forEach((c, i) => { row[c] = vals[i]; });
-  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at };
+  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at, mode: (row.mode ?? 'joint') as 'joint' | 'pool' };
 }
 
 export function getMemberSharedAccounts(tenant: string): (SharedAccountRecord & { displayName: string | null })[] {
   const db = getDb();
   const results = db.exec(`
-    SELECT sa.uuid, sa.owner_tenant, sa.account_id, sa.created_at, sam.display_name
+    SELECT sa.uuid, sa.owner_tenant, sa.account_id, sa.created_at, sa.mode, sam.display_name
     FROM shared_accounts sa
     JOIN shared_account_members sam ON sa.uuid = sam.shared_uuid
     WHERE sam.member_tenant = ?
@@ -631,7 +637,7 @@ export function getMemberSharedAccounts(tenant: string): (SharedAccountRecord & 
   return results[0].values.map(row => {
     const r: Record<string, any> = {};
     cols.forEach((c, i) => { r[c] = row[i]; });
-    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, displayName: r.display_name };
+    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, mode: (r.mode ?? 'joint') as 'joint' | 'pool', displayName: r.display_name };
   });
 }
 
@@ -649,7 +655,7 @@ export function getOwnerSharedAccounts(tenant: string): (SharedAccountRecord & {
   return results[0].values.map(row => {
     const r: Record<string, any> = {};
     cols.forEach((c, i) => { r[c] = row[i]; });
-    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, memberCount: r.member_count };
+    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, mode: (r.mode ?? 'joint') as 'joint' | 'pool', memberCount: r.member_count };
   });
 }
 

@@ -458,6 +458,11 @@ const de = {
   sharedAccountsDeleteTx: 'Löschen',
   sharedAccountsViewDetails: 'Details',
   sharedAccountsCloud: 'Nur Cloud',
+  sharedAccountsSelectMode: 'Art des geteilten Kontos wählen',
+  sharedAccountsModeJoint: 'Geteiltes Konto',
+  sharedAccountsModeJointDesc: 'Beide sehen alle Transaktionen – ideal für Partner oder WG-Konto.',
+  sharedAccountsModePool: 'Ausgaben-Pool',
+  sharedAccountsModePoolDesc: 'Ausgaben aufteilen & einzelne Anteile abhaken wenn bezahlt.',
 
   // Join page
   joinTitle: 'Einladung annehmen',

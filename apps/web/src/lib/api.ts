@@ -340,9 +340,10 @@ export const api = {
   getSharedAccount: (uuid: string) =>
     fetchApi<SharedAccountInfo>(`/shared-accounts/${uuid}`),
 
-  shareAccount: (accountId: number) =>
+  shareAccount: (accountId: number, mode: 'joint' | 'pool' = 'joint') =>
     fetchApi<{ uuid: string; alreadyShared?: boolean }>(`/accounts/${accountId}/share`, {
       method: 'POST',
+      body: JSON.stringify({ mode }),
     }),
 
   unshareAccount: (accountId: number) =>

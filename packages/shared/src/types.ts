@@ -439,6 +439,7 @@ export interface SharedAccountInfo {
   createdAt: string;
   members: SharedAccountMember[];
   isOwner: boolean;
+  mode: 'joint' | 'pool';
 }
 
 export interface SharedAccountInvite {

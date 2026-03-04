@@ -451,6 +451,11 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsDeleteTx: 'Delete',
   sharedAccountsViewDetails: 'Details',
   sharedAccountsCloud: 'Cloud only',
+  sharedAccountsSelectMode: 'Choose sharing type',
+  sharedAccountsModeJoint: 'Joint account',
+  sharedAccountsModeJointDesc: 'Both see all transactions – ideal for partners or shared household.',
+  sharedAccountsModePool: 'Expense pool',
+  sharedAccountsModePoolDesc: 'Split expenses & check off individual shares when paid.',
 
   // Join page
   joinTitle: 'Accept invitation',

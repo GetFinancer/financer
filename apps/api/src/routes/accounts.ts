@@ -267,7 +267,8 @@ accountsRouter.post('/:id/share', (req, res) => {
     return;
   }
 
-  const uuid = createSharedAccount(tenant, Number(id));
+  const mode: 'joint' | 'pool' = req.body?.mode === 'pool' ? 'pool' : 'joint';
+  const uuid = createSharedAccount(tenant, Number(id), mode);
   db.prepare('UPDATE accounts SET shared_uuid = ? WHERE id = ?').run(uuid, id);
 
   res.json({ success: true, data: { uuid } });
