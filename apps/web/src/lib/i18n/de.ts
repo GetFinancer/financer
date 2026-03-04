@@ -457,6 +457,9 @@ const de = {
   joinError: 'Einladung ungültig oder abgelaufen',
   joinNotFound: 'Einladung nicht gefunden',
   joinAlreadyMember: 'Du bist bereits Mitglied dieses Kontos',
+  joinEnterYourAccount: 'Du bist der Einladende. Gib den Account-Namen der eingeladenen Person ein:',
+  joinAccountPlaceholder: 'account-name',
+  joinRedirect: 'Zu diesem Account wechseln →',
 } as const;
 
 export type TranslationKey = keyof typeof de;

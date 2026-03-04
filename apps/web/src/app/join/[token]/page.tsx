@@ -23,18 +23,38 @@ export default function JoinPage() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [joinTenant, setJoinTenant] = useState('');
+
+  // Detect current tenant from subdomain (e.g. test1.zemod.co.at → "test1")
+  const currentTenant =
+    typeof window !== 'undefined' && window.location.hostname.includes('.')
+      ? window.location.hostname.split('.')[0]
+      : null;
+
+  // Base domain without the leading subdomain (e.g. "zemod.co.at")
+  const baseDomain =
+    typeof window !== 'undefined' && window.location.hostname.includes('.')
+      ? window.location.hostname.split('.').slice(1).join('.')
+      : null;
+
+  // True when the invite link was opened on the owner's own subdomain
+  const isOwnerSubdomain = !!(preview && currentTenant && currentTenant === preview.ownerTenant);
 
   useEffect(() => {
     if (!token) return;
     api.getInvitePreview(token)
-      .then(data => {
-        setPreview(data);
-      })
-      .catch(err => {
-        setError(err.message || t('joinError'));
-      })
+      .then(data => setPreview(data))
+      .catch(err => setError(err.message || t('joinError')))
       .finally(() => setLoading(false));
   }, [token]);
+
+  function handleRedirect() {
+    const tenant = joinTenant.trim();
+    if (!tenant || !baseDomain) return;
+    const protocol = window.location.protocol;
+    const port = window.location.port ? `:${window.location.port}` : '';
+    window.location.href = `${protocol}//${tenant}.${baseDomain}${port}/join/${token}`;
+  }
 
   async function handleJoin() {
     if (!preview) return;
@@ -77,6 +97,7 @@ export default function JoinPage() {
 
         {preview && !joined && !error && (
           <div className="space-y-4">
+            {/* Invite info — always shown */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('joinInvitedBy')}</span>
@@ -94,19 +115,49 @@ export default function JoinPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleJoin}
-              disabled={joining}
-              className="w-full py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-medium disabled:opacity-50"
-            >
-              {joining ? t('joinAccepting') : t('joinAccept')}
-            </button>
-            <button
-              onClick={() => router.push('/')}
-              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t('cancel')}
-            </button>
+            {isOwnerSubdomain ? (
+              /* Opened on the owner's subdomain → ask for joiner's account name */
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground text-center">
+                  {t('joinEnterYourAccount')}
+                </p>
+                <input
+                  type="text"
+                  value={joinTenant}
+                  onChange={e =>
+                    setJoinTenant(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                  }
+                  placeholder={t('joinAccountPlaceholder')}
+                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm"
+                  onKeyDown={e => e.key === 'Enter' && handleRedirect()}
+                  autoFocus
+                />
+                <button
+                  onClick={handleRedirect}
+                  disabled={!joinTenant.trim()}
+                  className="w-full py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-medium disabled:opacity-50"
+                >
+                  {t('joinRedirect')}
+                </button>
+              </div>
+            ) : (
+              /* On the correct (joiner's) subdomain → normal accept flow */
+              <>
+                <button
+                  onClick={handleJoin}
+                  disabled={joining}
+                  className="w-full py-3 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all font-medium disabled:opacity-50"
+                >
+                  {joining ? t('joinAccepting') : t('joinAccept')}
+                </button>
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t('cancel')}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

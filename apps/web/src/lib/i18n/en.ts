@@ -459,6 +459,9 @@ const en: Record<TranslationKey, string> = {
   joinError: 'Invitation invalid or expired',
   joinNotFound: 'Invitation not found',
   joinAlreadyMember: 'You are already a member of this account',
+  joinEnterYourAccount: 'You are the inviter. Enter the account name of the person you are inviting:',
+  joinAccountPlaceholder: 'account-name',
+  joinRedirect: 'Switch to that account →',
 };
 
 export default en;
