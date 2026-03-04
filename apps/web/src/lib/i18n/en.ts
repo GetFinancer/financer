@@ -462,6 +462,11 @@ const en: Record<TranslationKey, string> = {
   joinEnterYourAccount: 'You are the inviter. Enter the account name of the person you are inviting:',
   joinAccountPlaceholder: 'account-name',
   joinRedirect: 'Switch to that account →',
+  sharedAccountsEnterLink: 'Enter invitation',
+  sharedAccountsLinkPlaceholder: 'Paste invitation code...',
+  sharedAccountsLinkCheck: 'Check',
+  sharedAccountsInviteTokenHint: 'Share this code with the person you want to invite.',
+  sharedAccountsInviteCopied: 'Copied ✓',
 };
 
 export default en;

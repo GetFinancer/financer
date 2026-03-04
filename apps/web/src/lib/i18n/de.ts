@@ -460,6 +460,11 @@ const de = {
   joinEnterYourAccount: 'Du bist der Einladende. Gib den Account-Namen der eingeladenen Person ein:',
   joinAccountPlaceholder: 'account-name',
   joinRedirect: 'Zu diesem Account wechseln →',
+  sharedAccountsEnterLink: 'Einladung eingeben',
+  sharedAccountsLinkPlaceholder: 'Einladungscode einfügen...',
+  sharedAccountsLinkCheck: 'Prüfen',
+  sharedAccountsInviteTokenHint: 'Teile diesen Code mit der Person, die du einladen möchtest.',
+  sharedAccountsInviteCopied: 'Kopiert ✓',
 } as const;
 
 export type TranslationKey = keyof typeof de;

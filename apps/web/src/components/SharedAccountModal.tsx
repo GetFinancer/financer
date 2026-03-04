@@ -28,6 +28,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10));
   const [settleTenant, setSettleTenant] = useState('');
   const [splitTxId, setSplitTxId] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Detect current tenant from hostname (e.g., alice.getfinancer.com -> alice)
   const currentTenant = account.isOwner
@@ -78,9 +79,12 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
 
   function handleCopyInvite() {
     if (!invite) return;
-    const url = `${window.location.origin}/join/${invite.token}`;
-    navigator.clipboard.writeText(url);
-    alert(t('sharedAccountsInviteCopy'));
+    navigator.clipboard.writeText(invite.token);
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+      setShowInvite(false);
+    }, 1500);
   }
 
   async function handleRemoveMember(memberTenant: string) {
@@ -361,15 +365,19 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6 rounded-xl">
             <div className="bg-background border border-border rounded-lg p-6 w-full max-w-sm space-y-4">
               <h3 className="font-semibold">{t('sharedAccountsInviteCreate')}</h3>
-              <div className="bg-card border border-border rounded p-3 text-sm font-mono break-all">
-                {`${typeof window !== 'undefined' ? window.location.origin : ''}/join/${invite.token}`}
+              <p className="text-xs text-muted-foreground">{t('sharedAccountsInviteTokenHint')}</p>
+              <div className="bg-card border border-border rounded p-3 text-sm font-mono break-all select-all">
+                {invite.token}
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('sharedAccountsInviteExpires').replace('{date}', new Date(invite.expiresAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US'))}
               </p>
               <div className="flex gap-2">
-                <button onClick={handleCopyInvite} className="flex-1 py-2 nav-item-active rounded-md text-sm hover:opacity-90">
-                  {t('sharedAccountsInviteCopy')}
+                <button
+                  onClick={handleCopyInvite}
+                  className={`flex-1 py-2 rounded-md text-sm transition-all ${copied ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'nav-item-active hover:opacity-90'}`}
+                >
+                  {copied ? t('sharedAccountsInviteCopied') : t('sharedAccountsInviteCopy')}
                 </button>
                 <button onClick={() => setShowInvite(false)} className="flex-1 py-2 border border-border rounded-md text-sm hover:bg-card">
                   {t('cancel')}
