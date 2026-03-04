@@ -51,7 +51,6 @@ export default function AccountsPage() {
       setLoading(false);
     }
   }
-  }
 
   function resetForm() {
     setFormData({
