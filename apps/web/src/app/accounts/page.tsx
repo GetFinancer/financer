@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AccountWithBalance, AccountType, CreateAccountRequest } from '@financer/shared';
+import { AccountWithBalance, AccountType, CreateAccountRequest, SharedAccountInfo } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
+import SharedAccountModal from '@/components/SharedAccountModal';
 
 export default function AccountsPage() {
   const { t, numberLocale } = useTranslation();
@@ -20,6 +21,8 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
+  const [selectedShared, setSelectedShared] = useState<SharedAccountInfo | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -36,6 +39,7 @@ export default function AccountsPage() {
 
   useEffect(() => {
     loadAccounts();
+    loadSharedAccounts();
   }, []);
 
   async function loadAccounts() {
@@ -46,6 +50,28 @@ export default function AccountsPage() {
       console.error('Failed to load accounts:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadSharedAccounts() {
+    try {
+      const data = await api.getSharedAccounts();
+      setSharedAccounts(data);
+    } catch {
+      // Silently fail — may not be cloudhost
+    }
+  }
+
+  async function handleShareAccount(id: number) {
+    try {
+      const result = await api.shareAccount(id);
+      await loadSharedAccounts();
+      await loadAccounts();
+      // Open modal for the newly shared account
+      const shared = sharedAccounts.find(s => s.uuid === result.uuid) ?? (await api.getSharedAccounts()).find(s => s.uuid === result.uuid);
+      if (shared) setSelectedShared(shared);
+    } catch {
+      alert(t('errorSaving'));
     }
   }
 
@@ -133,6 +159,13 @@ export default function AccountsPage() {
 
   return (
     <>
+      {selectedShared && (
+        <SharedAccountModal
+          account={selectedShared}
+          onClose={() => setSelectedShared(null)}
+          onDeleted={() => { loadSharedAccounts(); loadAccounts(); setSelectedShared(null); }}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -297,7 +330,9 @@ export default function AccountsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {accounts.map((account) => (
+            {accounts.map((account) => {
+              const shared = sharedAccounts.find(s => s.accountId === account.id && s.isOwner);
+              return (
               <div key={account.id} className="glass-card p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -306,6 +341,14 @@ export default function AccountsPage() {
                       {account.isDefault && (
                         <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                           {t('accountsDefault')}
+                        </span>
+                      )}
+                      {shared && (
+                        <span
+                          className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full cursor-pointer hover:bg-blue-500/30 transition-colors"
+                          onClick={() => setSelectedShared(shared)}
+                        >
+                          {t('sharedAccountsShared')}
                         </span>
                       )}
                     </h3>
@@ -329,7 +372,7 @@ export default function AccountsPage() {
                   </span>
                 </div>
 
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                   <button
                     onClick={() => handleEdit(account)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"
@@ -339,6 +382,25 @@ export default function AccountsPage() {
                     </svg>
                     {t('edit')}
                   </button>
+                  {!shared && (
+                    <button
+                      onClick={() => handleShareAccount(account.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      {t('sharedAccountsShare')}
+                    </button>
+                  )}
+                  {shared && (
+                    <button
+                      onClick={() => setSelectedShared(shared)}
+                      className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-md border border-transparent hover:border-blue-500/20 transition-colors"
+                    >
+                      {t('sharedAccountsViewDetails')}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(account.id)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md border border-transparent hover:border-destructive/20 transition-colors"
@@ -350,7 +412,8 @@ export default function AccountsPage() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

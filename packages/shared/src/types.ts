@@ -60,6 +60,7 @@ export interface TransactionWithDetails extends Transaction {
   categoryColor?: string;
   parentCategoryName?: string;
   transferToAccountName?: string;
+  addedBy?: string; // tenant who added this tx (for shared accounts)
 }
 
 // API Request/Response Types
@@ -407,6 +408,46 @@ export interface AdminTenant {
 export interface UpdateTenantRequest {
   status?: TenantPlan;
   trialEndsAt?: string;
+}
+
+// Shared Account Types (Cloud only)
+export interface SharedAccountMember {
+  tenant: string;
+  displayName: string | null;
+  joinedAt: string;
+}
+
+export interface SharedAccountInfo {
+  uuid: string;
+  ownerTenant: string;
+  accountId: number;
+  accountName: string;
+  balance: number;
+  createdAt: string;
+  members: SharedAccountMember[];
+  isOwner: boolean;
+}
+
+export interface SharedAccountInvite {
+  token: string;
+  sharedUuid: string;
+  expiresAt: string;
+}
+
+export interface SharedBalance {
+  tenant: string;
+  displayName: string | null;
+  owes: number; // positive = this member owes owner; negative = owner owes member
+}
+
+export interface SharedBalanceResult {
+  balances: SharedBalance[];
+  totalUnsettled: number;
+}
+
+export interface SplitTransactionRequest {
+  type: 'equal' | 'custom';
+  shares?: Record<string, number>; // tenant -> amount (for custom split)
 }
 
 // API Response Types

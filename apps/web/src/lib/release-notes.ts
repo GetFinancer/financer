@@ -13,6 +13,28 @@ export interface VersionNotes {
 
 export const releaseNotes: VersionNotes[] = [
   {
+    version: '1.6.0',
+    date: '2026-03',
+    new: [
+      {
+        de: 'Geteilte Konten — Konten mit anderen Financer-Nutzern teilen (nur Cloud)',
+        en: 'Shared Accounts — share accounts with other Financer users (Cloud only)',
+      },
+      {
+        de: 'Einladungssystem per Link (48 h gültig, einmalig verwendbar)',
+        en: 'Invite system via link (valid 48 h, single-use)',
+      },
+      {
+        de: 'Splitwise-Modus — Ausgaben aufteilen, Bilanz anzeigen, Schulden begleichen',
+        en: 'Splitwise mode — split expenses, view balance, settle up',
+      },
+      {
+        de: 'Konto-Modal mit Tabs: Alle / Von mir / Von [Name]',
+        en: 'Account modal with tabs: All / By me / By [Name]',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-03',
     new: [

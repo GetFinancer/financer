@@ -1,6 +1,7 @@
 import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
+import { randomBytes, randomUUID } from 'crypto';
 import type { TenantPlan } from '@financer/shared';
 
 const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -78,6 +79,36 @@ export async function initRegistry() {
       coupon_code TEXT NOT NULL REFERENCES coupons(code),
       tenant_name TEXT NOT NULL,
       redeemed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Shared accounts tables
+  registryDb.run(`
+    CREATE TABLE IF NOT EXISTS shared_accounts (
+      uuid TEXT PRIMARY KEY,
+      owner_tenant TEXT NOT NULL,
+      account_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  registryDb.run(`
+    CREATE TABLE IF NOT EXISTS shared_account_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shared_uuid TEXT NOT NULL REFERENCES shared_accounts(uuid) ON DELETE CASCADE,
+      member_tenant TEXT NOT NULL,
+      display_name TEXT,
+      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(shared_uuid, member_tenant)
+    )
+  `);
+
+  registryDb.run(`
+    CREATE TABLE IF NOT EXISTS shared_account_invites (
+      token TEXT PRIMARY KEY,
+      shared_uuid TEXT NOT NULL REFERENCES shared_accounts(uuid) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0
     )
   `);
 
@@ -521,6 +552,176 @@ export function getDiscountCouponForTenant(tenant: string): string | null {
   }
   stmt.free();
   return result;
+}
+
+// ===== Shared Accounts Functions =====
+
+export interface SharedAccountRecord {
+  uuid: string;
+  ownerTenant: string;
+  accountId: number;
+  createdAt: string;
+}
+
+export interface SharedAccountMemberRecord {
+  memberTenant: string;
+  displayName: string | null;
+  joinedAt: string;
+}
+
+export function createSharedAccount(ownerTenant: string, accountId: number): string {
+  const db = getDb();
+  const uuid = randomUUID();
+  const stmt = db.prepare('INSERT INTO shared_accounts (uuid, owner_tenant, account_id) VALUES (?, ?, ?)');
+  stmt.run([uuid, ownerTenant, accountId]);
+  stmt.free();
+  saveRegistry();
+  return uuid;
+}
+
+export function getSharedAccount(uuid: string): (SharedAccountRecord & { members: SharedAccountMemberRecord[] }) | null {
+  const db = getDb();
+  const stmt = db.prepare('SELECT * FROM shared_accounts WHERE uuid = ?');
+  stmt.bind([uuid]);
+  if (!stmt.step()) { stmt.free(); return null; }
+  const cols = stmt.getColumnNames();
+  const vals = stmt.get();
+  stmt.free();
+  const row: Record<string, any> = {};
+  cols.forEach((c, i) => { row[c] = vals[i]; });
+
+  const mStmt = db.prepare('SELECT member_tenant, display_name, joined_at FROM shared_account_members WHERE shared_uuid = ?');
+  mStmt.bind([uuid]);
+  const members: SharedAccountMemberRecord[] = [];
+  while (mStmt.step()) {
+    const mc = mStmt.getColumnNames();
+    const mv = mStmt.get();
+    const m: Record<string, any> = {};
+    mc.forEach((c, i) => { m[c] = mv[i]; });
+    members.push({ memberTenant: m.member_tenant, displayName: m.display_name, joinedAt: m.joined_at });
+  }
+  mStmt.free();
+
+  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at, members };
+}
+
+export function getSharedAccountByOwnerAndAccountId(ownerTenant: string, accountId: number): SharedAccountRecord | null {
+  const db = getDb();
+  const stmt = db.prepare('SELECT * FROM shared_accounts WHERE owner_tenant = ? AND account_id = ?');
+  stmt.bind([ownerTenant, accountId]);
+  if (!stmt.step()) { stmt.free(); return null; }
+  const cols = stmt.getColumnNames();
+  const vals = stmt.get();
+  stmt.free();
+  const row: Record<string, any> = {};
+  cols.forEach((c, i) => { row[c] = vals[i]; });
+  return { uuid: row.uuid, ownerTenant: row.owner_tenant, accountId: row.account_id, createdAt: row.created_at };
+}
+
+export function getMemberSharedAccounts(tenant: string): (SharedAccountRecord & { displayName: string | null })[] {
+  const db = getDb();
+  const results = db.exec(`
+    SELECT sa.uuid, sa.owner_tenant, sa.account_id, sa.created_at, sam.display_name
+    FROM shared_accounts sa
+    JOIN shared_account_members sam ON sa.uuid = sam.shared_uuid
+    WHERE sam.member_tenant = ?
+  `, [tenant]);
+  if (!results.length) return [];
+  const cols = results[0].columns;
+  return results[0].values.map(row => {
+    const r: Record<string, any> = {};
+    cols.forEach((c, i) => { r[c] = row[i]; });
+    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, displayName: r.display_name };
+  });
+}
+
+export function getOwnerSharedAccounts(tenant: string): (SharedAccountRecord & { memberCount: number })[] {
+  const db = getDb();
+  const results = db.exec(`
+    SELECT sa.*, COUNT(sam.id) as member_count
+    FROM shared_accounts sa
+    LEFT JOIN shared_account_members sam ON sa.uuid = sam.shared_uuid
+    WHERE sa.owner_tenant = ?
+    GROUP BY sa.uuid
+  `, [tenant]);
+  if (!results.length) return [];
+  const cols = results[0].columns;
+  return results[0].values.map(row => {
+    const r: Record<string, any> = {};
+    cols.forEach((c, i) => { r[c] = row[i]; });
+    return { uuid: r.uuid, ownerTenant: r.owner_tenant, accountId: r.account_id, createdAt: r.created_at, memberCount: r.member_count };
+  });
+}
+
+export function isMemberOrOwner(uuid: string, tenant: string): 'owner' | 'member' | null {
+  const sa = getSharedAccount(uuid);
+  if (!sa) return null;
+  if (sa.ownerTenant === tenant) return 'owner';
+  if (sa.members.some(m => m.memberTenant === tenant)) return 'member';
+  return null;
+}
+
+export function createInvite(uuid: string): string {
+  const db = getDb();
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  const stmt = db.prepare('INSERT INTO shared_account_invites (token, shared_uuid, expires_at) VALUES (?, ?, ?)');
+  stmt.run([token, uuid, expiresAt]);
+  stmt.free();
+  saveRegistry();
+  return token;
+}
+
+export function getInviteByToken(token: string): { token: string; sharedUuid: string; expiresAt: string; used: number } | null {
+  const db = getDb();
+  const stmt = db.prepare('SELECT * FROM shared_account_invites WHERE token = ?');
+  stmt.bind([token]);
+  if (!stmt.step()) { stmt.free(); return null; }
+  const cols = stmt.getColumnNames();
+  const vals = stmt.get();
+  stmt.free();
+  const row: Record<string, any> = {};
+  cols.forEach((c, i) => { row[c] = vals[i]; });
+  return { token: row.token, sharedUuid: row.shared_uuid, expiresAt: row.expires_at, used: row.used };
+}
+
+export function consumeInvite(token: string): string | null {
+  const invite = getInviteByToken(token);
+  if (!invite) return null;
+  if (invite.used) return null;
+  if (new Date(invite.expiresAt) < new Date()) return null;
+
+  const db = getDb();
+  const stmt = db.prepare('UPDATE shared_account_invites SET used = 1 WHERE token = ?');
+  stmt.run([token]);
+  stmt.free();
+  saveRegistry();
+  return invite.sharedUuid;
+}
+
+export function addMember(uuid: string, memberTenant: string, displayName?: string): void {
+  const db = getDb();
+  const stmt = db.prepare('INSERT OR IGNORE INTO shared_account_members (shared_uuid, member_tenant, display_name) VALUES (?, ?, ?)');
+  stmt.run([uuid, memberTenant, displayName ?? null]);
+  stmt.free();
+  saveRegistry();
+}
+
+export function removeMember(uuid: string, memberTenant: string): void {
+  const db = getDb();
+  const stmt = db.prepare('DELETE FROM shared_account_members WHERE shared_uuid = ? AND member_tenant = ?');
+  stmt.run([uuid, memberTenant]);
+  stmt.free();
+  saveRegistry();
+}
+
+export function deleteSharedAccount(uuid: string): void {
+  const db = getDb();
+  // Cascade: invites and members are deleted via FK ON DELETE CASCADE
+  const stmt = db.prepare('DELETE FROM shared_accounts WHERE uuid = ?');
+  stmt.run([uuid]);
+  stmt.free();
+  saveRegistry();
 }
 
 export function getRegistryStats(): {

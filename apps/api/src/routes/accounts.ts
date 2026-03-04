@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { db } from '../db/index.js';
+import { db, tenantStorage } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { CreateAccountSchema, UpdateAccountSchema } from '../lib/schemas.js';
+import {
+  createSharedAccount,
+  getSharedAccountByOwnerAndAccountId,
+  deleteSharedAccount,
+} from '../db/registry.js';
 import type { AccountWithBalance, CreateAccountRequest } from '@financer/shared';
 
 // DB Row type (snake_case from SQLite)
@@ -239,6 +244,57 @@ accountsRouter.put('/:id', validate(UpdateAccountSchema), (req, res, next) => {
     console.error('Update account error:', err);
     next(err);
   }
+});
+
+// Share account (Cloud only - creates shared account entry in registry)
+accountsRouter.post('/:id/share', (req, res) => {
+  const tenant = tenantStorage.getStore();
+  if (!tenant) {
+    res.status(500).json({ success: false, error: 'No tenant context' });
+    return;
+  }
+
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) as any;
+  if (!existing) {
+    res.status(404).json({ success: false, error: 'Konto nicht gefunden' });
+    return;
+  }
+
+  // Check if already shared
+  if (existing.shared_uuid) {
+    res.json({ success: true, data: { uuid: existing.shared_uuid, alreadyShared: true } });
+    return;
+  }
+
+  const uuid = createSharedAccount(tenant, Number(id));
+  db.prepare('UPDATE accounts SET shared_uuid = ? WHERE id = ?').run(uuid, id);
+
+  res.json({ success: true, data: { uuid } });
+});
+
+// Unshare account (stop sharing)
+accountsRouter.delete('/:id/share', (req, res) => {
+  const tenant = tenantStorage.getStore();
+  if (!tenant) {
+    res.status(500).json({ success: false, error: 'No tenant context' });
+    return;
+  }
+
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) as any;
+  if (!existing || !existing.shared_uuid) {
+    res.status(404).json({ success: false, error: 'Konto ist nicht geteilt' });
+    return;
+  }
+
+  const sa = getSharedAccountByOwnerAndAccountId(tenant, Number(id));
+  if (sa) {
+    deleteSharedAccount(sa.uuid);
+  }
+  db.prepare('UPDATE accounts SET shared_uuid = NULL WHERE id = ?').run(id);
+
+  res.json({ success: true, data: { success: true } });
 });
 
 // Delete account
