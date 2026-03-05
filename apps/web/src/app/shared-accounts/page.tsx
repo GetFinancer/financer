@@ -39,6 +39,8 @@ export default function SharedAccountsPage() {
   const [shareMode, setShareMode] = useState<'joint' | 'pool'>('joint');
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [shareInviteUrl, setShareInviteUrl] = useState<string | null>(null);
+  const [shareInviteCopied, setShareInviteCopied] = useState(false);
 
   async function loadSharedAccounts() {
     try {
@@ -76,6 +78,8 @@ export default function SharedAccountsPage() {
     setShareError(null);
     setShareAccountId(null);
     setShareMode('joint');
+    setShareInviteUrl(null);
+    setShareInviteCopied(false);
   }
 
   // Token aus URL oder bare token extrahieren
@@ -122,20 +126,41 @@ export default function SharedAccountsPage() {
     }
   }
 
+  function buildInviteUrl(token: string): string {
+    if (typeof window === 'undefined') return token;
+    return `${window.location.protocol}//${window.location.host}/join/${token}`;
+  }
+
   async function handleShare() {
     if (!shareAccountId) return;
     setSharing(true);
     setShareError(null);
     try {
-      await api.shareAccount(shareAccountId, shareMode);
-      setPanel('none');
-      setShareAccountId(null);
+      const { uuid } = await api.shareAccount(shareAccountId, shareMode);
+      const invite = await api.createInvite(uuid, 48);
+      const url = buildInviteUrl(invite.token);
+      setShareInviteUrl(url);
       await loadSharedAccounts();
     } catch (err: any) {
       setShareError(err.message || t('errorSaving'));
     } finally {
       setSharing(false);
     }
+  }
+
+  function handleCopyShareInvite() {
+    if (!shareInviteUrl) return;
+    navigator.clipboard.writeText(shareInviteUrl);
+    setShareInviteCopied(true);
+    setTimeout(() => setShareInviteCopied(false), 2000);
+  }
+
+  function handleDoneSharing() {
+    setPanel('none');
+    setShareAccountId(null);
+    setShareInviteUrl(null);
+    setShareInviteCopied(false);
+    setShareMode('joint');
   }
 
   return (
@@ -181,9 +206,35 @@ export default function SharedAccountsPage() {
           <div className="glass-card p-5 space-y-4">
             <h2 className="font-semibold text-sm">{t('sharedAccountsShare')}</h2>
 
-            {ownAccounts.length === 0 ? (
+            {shareInviteUrl ? (
+              /* Step 2: Konto wurde geteilt → Einladungslink anzeigen */
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{t('sharedAccountsInviteTokenHint')}</p>
+                <a
+                  href={shareInviteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-card border border-border rounded p-3 text-sm font-mono break-all select-all hover:border-primary/50 transition-colors"
+                  onClick={e => e.preventDefault()}
+                >
+                  {shareInviteUrl}
+                </a>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyShareInvite}
+                    className={`flex-1 py-2 rounded-full text-sm transition-all ${shareInviteCopied ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'nav-item-active hover:opacity-90'}`}
+                  >
+                    {shareInviteCopied ? t('sharedAccountsInviteCopied') : t('sharedAccountsInviteCopy')}
+                  </button>
+                  <button onClick={handleDoneSharing} className="px-4 py-2 border border-border rounded-full text-sm hover:bg-card">
+                    {t('done')}
+                  </button>
+                </div>
+              </div>
+            ) : ownAccounts.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('sharedAccountsNoAccountsToShare')}</p>
             ) : (
+              /* Step 1: Konto & Modus auswählen */
               <>
                 <div className="space-y-2">
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">{t('sharedAccountsSelectAccount')}</label>

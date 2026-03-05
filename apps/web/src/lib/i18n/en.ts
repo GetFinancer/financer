@@ -6,6 +6,7 @@ const en: Record<TranslationKey, string> = {
   save: 'Save',
   saveAndAddAnother: 'Save & Add Another',
   cancel: 'Cancel',
+  done: 'Done',
   delete: 'Delete',
   edit: 'Edit',
   create: 'Create',
