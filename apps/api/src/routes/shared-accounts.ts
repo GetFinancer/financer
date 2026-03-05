@@ -550,7 +550,7 @@ sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) =>
       db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(splitId, payer);
 
       // Create payer income tx so account balance reaches 0 when all settle
-      const desc = tx.description ? `Eigenanteil: ${tx.description}` : 'Eigenanteil / Own share';
+      const desc = tx.description ? `Eigenanteil / Own share: ${tx.description}` : 'Eigenanteil / Own share';
       const payerTxResult = db.prepare(`
         INSERT INTO transactions (account_id, amount, type, description, date, added_by)
         VALUES (?, ?, 'income', ?, ?, ?)

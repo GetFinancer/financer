@@ -390,6 +390,10 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                     const isSplitOpen = openSplitTxId === tx.id;
                     const hasSplit = !!tx.split;
                     const allSettled = hasSplit && tx.split!.shares.every(s => s.settled);
+                    // Only allow deleting expense txs that haven't had any non-payer share settled yet
+                    // (settled shares create income txs that would be orphaned if the expense is deleted)
+                    const hasSettledNonPayerShares = hasSplit && tx.split!.shares.some(s => s.settled && s.tenant !== payerTenant);
+                    const canDelete = isMyTx && tx.type === 'expense' && !hasSettledNonPayerShares;
 
                     return (
                       <div key={tx.id}>
@@ -429,7 +433,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                                   : (hasSplit ? t('sharedAccountsSplitView') : null)}
                               </button>
                             )}
-                            {isMyTx && (
+                            {canDelete && (
                               <button
                                 onClick={() => handleDeleteTx(tx.id)}
                                 className="text-xs px-2 py-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded border border-transparent hover:border-destructive/20 transition-colors"
