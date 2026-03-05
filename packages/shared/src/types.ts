@@ -449,10 +449,16 @@ export interface SharedAccountInvite {
   expiresAt: string;
 }
 
+export interface SharedBalanceSource {
+  description?: string;
+  amount: number;
+}
+
 export interface SharedBalance {
   tenant: string;
   displayName: string | null;
   owes: number; // positive = this member owes owner; negative = owner owes member
+  sources: SharedBalanceSource[];
 }
 
 export interface SharedBalanceResult {

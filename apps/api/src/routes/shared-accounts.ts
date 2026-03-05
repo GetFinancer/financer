@@ -450,9 +450,14 @@ sharedAccountsRouter.delete('/:uuid/transactions/:txId', async (req, res) => {
       return;
     }
 
-    await inOwnerDb(sa.ownerTenant, () =>
-      db.prepare('DELETE FROM transactions WHERE id = ?').run(txId)
-    );
+    await inOwnerDb(sa.ownerTenant, () => {
+      // Clean up payer income tx before deleting the expense (CASCADE removes shared_splits)
+      const split = db.prepare('SELECT payer_settlement_tx_id FROM shared_splits WHERE transaction_id = ?').get(txId) as { payer_settlement_tx_id: number | null } | undefined;
+      if (split?.payer_settlement_tx_id) {
+        db.prepare('DELETE FROM transactions WHERE id = ?').run(split.payer_settlement_tx_id);
+      }
+      db.prepare('DELETE FROM transactions WHERE id = ?').run(txId);
+    });
 
     res.json({ success: true, data: { success: true } });
   } catch (err) {
@@ -461,12 +466,12 @@ sharedAccountsRouter.delete('/:uuid/transactions/:txId', async (req, res) => {
   }
 });
 
-// POST /shared-accounts/:uuid/transactions/:txId/split — mark transaction as split
+// POST /shared-accounts/:uuid/transactions/:txId/split — create or update split
 sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) => {
   try {
     const tenant = currentTenant();
     const { uuid, txId } = req.params;
-    const { type = 'equal', shares } = req.body;
+    const { type = 'custom', shares } = req.body;
 
     const role = isMemberOrOwner(uuid, tenant);
     if (!role) {
@@ -486,37 +491,74 @@ sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) =>
       return;
     }
 
+    const payer = tx.added_by ?? sa.ownerTenant;
+
     await inOwnerDb(sa.ownerTenant, () => {
-      // Remove existing split if any
-      const existing = db.prepare('SELECT id FROM shared_splits WHERE transaction_id = ?').get(txId) as any;
+      // Check for existing split
+      const existing = db.prepare(
+        'SELECT id, payer_settlement_tx_id FROM shared_splits WHERE transaction_id = ?'
+      ).get(txId) as { id: number; payer_settlement_tx_id: number | null } | undefined;
+
+      // Collect already-settled non-payer shares (locked — cannot change)
+      const settledNonPayer: Record<string, number> = {};
+      let splitId: number | bigint;
+
       if (existing) {
-        db.prepare('DELETE FROM shared_split_shares WHERE split_id = ?').run(existing.id);
-        db.prepare('DELETE FROM shared_splits WHERE id = ?').run(existing.id);
+        const settledRows = db.prepare(
+          'SELECT tenant, amount FROM shared_split_shares WHERE split_id = ? AND settled = 1 AND tenant != ?'
+        ).all(existing.id, payer) as { tenant: string; amount: number }[];
+        settledRows.forEach(r => { settledNonPayer[r.tenant] = r.amount; });
+
+        // Delete old payer income tx (will be re-created below)
+        if (existing.payer_settlement_tx_id) {
+          db.prepare('DELETE FROM transactions WHERE id = ?').run(existing.payer_settlement_tx_id);
+        }
+
+        // Remove unsettled shares + payer's share (payer is always recomputed)
+        db.prepare('DELETE FROM shared_split_shares WHERE split_id = ? AND (settled = 0 OR tenant = ?)').run(existing.id, payer);
+        db.prepare('UPDATE shared_splits SET split_type = ?, payer_settlement_tx_id = NULL WHERE id = ?').run(type, existing.id);
+        splitId = existing.id;
+      } else {
+        const result = db.prepare(
+          'INSERT INTO shared_splits (transaction_id, shared_uuid, split_type) VALUES (?, ?, ?)'
+        ).run(txId, uuid, type);
+        splitId = result.lastInsertRowid;
       }
 
-      const splitResult = db.prepare(
-        'INSERT INTO shared_splits (transaction_id, shared_uuid, split_type) VALUES (?, ?, ?)'
-      ).run(txId, uuid, type);
-
-      const splitId = splitResult.lastInsertRowid;
+      // Insert new shares for non-payer members (skip already-settled locked ones)
+      let sumOthers = Object.values(settledNonPayer).reduce((a, b) => a + b, 0);
 
       if (type === 'equal') {
         const perPerson = Math.round((tx.amount / allMembers.length) * 100) / 100;
         for (const t of allMembers) {
+          if (t === payer || settledNonPayer[t] !== undefined) continue;
           db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, t, perPerson);
+          sumOthers += perPerson;
         }
-      } else if (type === 'custom' && shares) {
-        for (const [t, amount] of Object.entries(shares)) {
+      } else if (shares) {
+        for (const t of allMembers) {
+          if (t === payer || settledNonPayer[t] !== undefined) continue;
+          const amount = Number((shares as Record<string, number>)[t]) || 0;
           db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, t, amount);
+          sumOthers += amount;
         }
       }
 
-      // Auto-settle payer's own share (they already paid)
-      const payer = tx.added_by ?? sa.ownerTenant;
-      if (allMembers.includes(payer)) {
-        db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?')
-          .run(splitId, payer);
-      }
+      // Payer gets the residual
+      const payerAmount = Math.max(0, Math.round((tx.amount - sumOthers) * 100) / 100);
+      db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, payer, payerAmount);
+      db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(splitId, payer);
+
+      // Create payer income tx so account balance reaches 0 when all settle
+      const desc = tx.description ? `Eigenanteil: ${tx.description}` : 'Eigenanteil / Own share';
+      const payerTxResult = db.prepare(`
+        INSERT INTO transactions (account_id, amount, type, description, date, added_by)
+        VALUES (?, ?, 'income', ?, ?, ?)
+      `).run(sa.accountId, payerAmount, desc, tx.date, payer);
+
+      db.prepare('UPDATE shared_splits SET payer_settlement_tx_id = ? WHERE id = ?').run(
+        payerTxResult.lastInsertRowid, splitId
+      );
     });
 
     res.json({ success: true, data: { success: true } });
@@ -588,10 +630,18 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
 
     // rawDebts[debtor][creditor] = amount
     const rawDebts: Record<string, Record<string, number>> = {};
-    function addDebt(debtor: string, creditor: string, amount: number) {
+    // rawSources[debtor][creditor] = list of source transactions
+    const rawSources: Record<string, Record<string, { description?: string; amount: number }[]>> = {};
+
+    function addDebt(debtor: string, creditor: string, amount: number, source?: { description?: string; amount: number }) {
       if (debtor === creditor || amount <= 0) return;
       if (!rawDebts[debtor]) rawDebts[debtor] = {};
       rawDebts[debtor][creditor] = (rawDebts[debtor][creditor] ?? 0) + amount;
+      if (source) {
+        if (!rawSources[debtor]) rawSources[debtor] = {};
+        if (!rawSources[debtor][creditor]) rawSources[debtor][creditor] = [];
+        rawSources[debtor][creditor].push(source);
+      }
     }
 
     // Collect splits from all relevant shared accounts
@@ -601,19 +651,22 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
 
       const splits = await inOwnerDb(sharedAcct.ownerTenant, () =>
         db.prepare(`
-          SELECT sss.tenant, sss.amount, COALESCE(t.added_by, ?) as payer
+          SELECT sss.tenant, sss.amount, COALESCE(t.added_by, ?) as payer, t.description
           FROM shared_split_shares sss
           JOIN shared_splits ss ON sss.split_id = ss.id
           JOIN transactions t ON ss.transaction_id = t.id
           WHERE ss.shared_uuid = ? AND sss.settled = 0
-        `).all(sharedAcct.ownerTenant, sharedUuid) as { tenant: string; amount: number; payer: string }[]
+        `).all(sharedAcct.ownerTenant, sharedUuid) as { tenant: string; amount: number; payer: string; description: string | null }[]
       );
 
       for (const row of splits) {
         // Only count debts between members of the CURRENT shared account
         if (!allMembers.includes(row.tenant) || !allMembers.includes(row.payer)) continue;
         if (row.tenant !== row.payer) {
-          addDebt(row.tenant, row.payer, row.amount);
+          addDebt(row.tenant, row.payer, row.amount, {
+            description: row.description ?? undefined,
+            amount: row.amount,
+          });
         }
       }
     }
@@ -647,8 +700,12 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
       const iOweThem = rawDebts[tenant]?.[otherTenant] ?? 0;
       const net = Math.round((otherOwesMe - iOweThem) * 100) / 100;
       if (net === 0) continue;
+      // Sources: whose debt is larger determines which sources to show
+      const sources = net > 0
+        ? (rawSources[otherTenant]?.[tenant] ?? [])
+        : (rawSources[tenant]?.[otherTenant] ?? []);
       const member = sa.members.find(m => m.memberTenant === otherTenant);
-      balances.push({ tenant: otherTenant, displayName: member?.displayName ?? null, owes: net });
+      balances.push({ tenant: otherTenant, displayName: member?.displayName ?? null, owes: net, sources });
       totalUnsettled += Math.abs(net);
     }
 

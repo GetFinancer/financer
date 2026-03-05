@@ -336,6 +336,7 @@ function initSchema() {
   // v1.6.0: Shared accounts
   try { db.exec(`ALTER TABLE accounts ADD COLUMN shared_uuid TEXT`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE transactions ADD COLUMN added_by TEXT`); } catch (e) { /* exists */ }
+  try { db.exec(`ALTER TABLE shared_splits ADD COLUMN payer_settlement_tx_id INTEGER`); } catch (e) { /* exists */ }
 
   // Credit card bills table
   db.exec(`
@@ -366,6 +367,7 @@ function initSchema() {
       transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
       shared_uuid TEXT NOT NULL,
       split_type TEXT NOT NULL CHECK(split_type IN ('equal', 'custom')),
+      payer_settlement_tx_id INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
