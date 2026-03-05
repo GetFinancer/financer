@@ -302,6 +302,7 @@ accountsRouter.delete('/:id/share', (req, res) => {
 // Delete account
 accountsRouter.delete('/:id', (req, res) => {
   const { id } = req.params;
+  const force = req.query.force === 'true';
 
   const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
   if (!existing) {
@@ -314,12 +315,27 @@ accountsRouter.delete('/:id', (req, res) => {
     'SELECT COUNT(*) as count FROM transactions WHERE account_id = ? OR transfer_to_account_id = ?'
   ).get(id, id) as { count: number };
 
-  if (transactionCount.count > 0) {
+  if (transactionCount.count > 0 && !force) {
     res.status(400).json({
       success: false,
       error: 'Konto kann nicht gelöscht werden, da noch Transaktionen vorhanden sind',
+      data: { transactionCount: transactionCount.count },
     });
     return;
+  }
+
+  if (force) {
+    db.prepare('DELETE FROM transactions WHERE account_id = ? OR transfer_to_account_id = ?').run(id, id);
+  }
+
+  // Auto-stop sharing if this account was shared
+  const accountRow = existing as { shared_uuid?: string | null };
+  if (accountRow?.shared_uuid) {
+    const tenant = tenantStorage.getStore();
+    if (tenant) {
+      const sa = getSharedAccountByOwnerAndAccountId(tenant, Number(id));
+      if (sa) deleteSharedAccount(sa.uuid);
+    }
   }
 
   db.prepare('DELETE FROM accounts WHERE id = ?').run(id);

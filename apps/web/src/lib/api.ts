@@ -146,8 +146,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  deleteAccount: (id: number) =>
-    fetchApi<{ success: boolean }>(`/accounts/${id}`, {
+  deleteAccount: (id: number, force = false) =>
+    fetchApi<{ success: boolean }>(`/accounts/${id}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     }),
 

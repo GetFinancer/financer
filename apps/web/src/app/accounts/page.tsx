@@ -126,7 +126,28 @@ export default function AccountsPage() {
           await api.deleteAccount(id);
           loadAccounts();
         } catch (error: unknown) {
-          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : (error instanceof Error ? error.message : t('accountsDeleteFailed')));
+          if (isTrialExpiredError(error)) {
+            setSaveError(t('trialExpiredWriteBlocked'));
+            return;
+          }
+          const msg = error instanceof Error ? error.message : '';
+          if (msg.includes('Transaktionen vorhanden')) {
+            // Second confirmation: force-delete with all transactions
+            setConfirmDialog({
+              message: t('accountsConfirmDeleteForce'),
+              onConfirm: async () => {
+                setConfirmDialog(null);
+                try {
+                  await api.deleteAccount(id, true);
+                  loadAccounts();
+                } catch (e: unknown) {
+                  setSaveError(e instanceof Error ? e.message : t('accountsDeleteFailed'));
+                }
+              },
+            });
+          } else {
+            setSaveError(msg || t('accountsDeleteFailed'));
+          }
         }
       },
     });
