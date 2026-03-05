@@ -596,7 +596,7 @@ sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) =>
         const result = db.prepare(
           'INSERT INTO shared_splits (transaction_id, shared_uuid, split_type) VALUES (?, ?, ?)'
         ).run(txId, uuid, type);
-        splitId = result.lastInsertRowid;
+        splitId = result.lastInsertRowid as number;
       }
 
       // Insert new shares for non-payer members (skip already-settled locked ones)
