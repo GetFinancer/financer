@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { formatCurrency } from '@/lib/utils';
-import type { SharedAccountInfo, AccountWithBalance, Category, SharedBalanceResult } from '@financer/shared';
+import type { SharedAccountInfo, AccountWithBalance, Category, SharedBalanceResult, SharedBalanceSource } from '@financer/shared';
 import SharedAccountModal from '@/components/SharedAccountModal';
 
 interface InvitePreview {
@@ -21,7 +21,7 @@ interface DebtEntry {
   tenant: string;
   displayName: string | null;
   owes: number;
-  sources: { description?: string; amount: number }[];
+  sources: SharedBalanceSource[];
 }
 
 interface SettleDialog {
