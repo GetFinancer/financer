@@ -389,6 +389,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  updateSharedTransaction: (uuid: string, txId: number, data: Omit<CreateTransactionRequest, 'accountId'>) =>
+    fetchApi<Transaction>(`/shared-accounts/${uuid}/transactions/${txId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   deleteSharedTransaction: (uuid: string, txId: number) =>
     fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/transactions/${txId}`, {
       method: 'DELETE',

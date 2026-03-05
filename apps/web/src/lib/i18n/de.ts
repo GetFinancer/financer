@@ -511,6 +511,7 @@ const de = {
   sharedAccountsInviteTokenHint: 'Teile diesen Link mit der Person, die du einladen möchtest.',
   sharedAccountsInviteCopied: 'Kopiert ✓',
   sharedAccountsEigenanteil: 'Eigenanteil',
+  sharedAccountsSettlement: 'Schuldenausgleich',
   sharedAccountsDebtSectionIOwePre: 'Du schuldest',
   sharedAccountsDebtSectionTheyOwePre: 'Schuldet dir',
 } as const;

@@ -421,6 +421,80 @@ sharedAccountsRouter.post('/:uuid/transactions', async (req, res) => {
   }
 });
 
+// PUT /shared-accounts/:uuid/transactions/:txId — update a transaction
+sharedAccountsRouter.put('/:uuid/transactions/:txId', async (req, res) => {
+  try {
+    const tenant = currentTenant();
+    const { uuid, txId } = req.params;
+
+    const role = isMemberOrOwner(uuid, tenant);
+    if (!role) {
+      res.status(403).json({ success: false, error: 'Kein Zugriff / Access denied' });
+      return;
+    }
+
+    const sa = getSharedAccount(uuid)!;
+    const { categoryId, amount, type, description, date, notes } = req.body;
+
+    const tx = await inOwnerDb(sa.ownerTenant, () =>
+      db.prepare('SELECT * FROM transactions WHERE id = ? AND account_id = ?').get(txId, sa.accountId) as any
+    );
+
+    if (!tx) {
+      res.status(404).json({ success: false, error: 'Transaktion nicht gefunden' });
+      return;
+    }
+
+    if (tx.added_by !== tenant && sa.ownerTenant !== tenant) {
+      res.status(403).json({ success: false, error: 'Nur der Ersteller oder Eigentümer kann bearbeiten' });
+      return;
+    }
+
+    await inOwnerDb(sa.ownerTenant, () => {
+      // If amount changes, delete existing split to avoid stale shares
+      const amountChanged = amount !== undefined && Number(amount) !== tx.amount;
+      if (amountChanged) {
+        const split = db.prepare('SELECT id, payer_settlement_tx_id FROM shared_splits WHERE transaction_id = ?').get(txId) as { id: number; payer_settlement_tx_id: number | null } | undefined;
+        if (split) {
+          if (split.payer_settlement_tx_id) {
+            db.prepare('DELETE FROM transactions WHERE id = ?').run(split.payer_settlement_tx_id);
+          }
+          db.prepare('DELETE FROM shared_splits WHERE id = ?').run(split.id);
+        }
+      }
+
+      db.prepare(`
+        UPDATE transactions
+        SET category_id = ?,
+            amount = COALESCE(?, amount),
+            type = COALESCE(?, type),
+            description = ?,
+            date = COALESCE(?, date),
+            notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        categoryId !== undefined ? (categoryId ?? null) : tx.category_id,
+        amount ?? null,
+        type ?? null,
+        description !== undefined ? (description ?? null) : tx.description,
+        date ?? null,
+        notes !== undefined ? (notes ?? null) : tx.notes,
+        txId
+      );
+    });
+
+    const updatedTx = await inOwnerDb(sa.ownerTenant, () =>
+      db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId) as any
+    );
+
+    res.json({ success: true, data: updatedTx });
+  } catch (err) {
+    console.error('PUT /shared-accounts/:uuid/transactions/:txId error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // DELETE /shared-accounts/:uuid/transactions/:txId — delete a transaction (must be added by current tenant or owner)
 sharedAccountsRouter.delete('/:uuid/transactions/:txId', async (req, res) => {
   try {

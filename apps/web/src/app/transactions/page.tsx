@@ -37,7 +37,6 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     loadData();
-    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
   }, []);
 
   // Prevent body scroll when modal is open on mobile
@@ -54,14 +53,38 @@ export default function TransactionsPage() {
 
   async function loadData() {
     try {
-      const [txs, accs, cats] = await Promise.all([
+      const [txs, accs, cats, sas] = await Promise.all([
         api.getTransactions(),
         api.getAccounts(),
         api.getCategories(),
+        api.getSharedAccounts(),
       ]);
-      setTransactions(txs);
+
       setAccounts(accs);
       setCategories(cats);
+      setSharedAccounts(sas);
+
+      // For shared accounts where the current user is a member (not owner),
+      // transactions are stored in the owner's DB and won't appear in the regular list.
+      // Load them separately and merge in.
+      const memberSharedAccounts = sas.filter(sa => !sa.isOwner);
+      let allTxs = txs;
+      if (memberSharedAccounts.length > 0) {
+        const sharedTxArrays = await Promise.all(
+          memberSharedAccounts.map(sa =>
+            api.getSharedAccountTransactions(sa.uuid)
+              .then(list => list.map(tx => ({ ...tx, sharedUuid: sa.uuid })))
+              .catch(() => [])
+          )
+        );
+        const sharedTxs = sharedTxArrays.flat();
+        // Merge and sort by date descending
+        allTxs = [...txs, ...sharedTxs].sort((a, b) =>
+          b.date.localeCompare(a.date) || b.id - a.id
+        );
+      }
+
+      setTransactions(allTxs);
 
       // Set default account (prefer isDefault, fallback to first)
       if (accs.length > 0 && !formData.accountId) {
@@ -90,8 +113,13 @@ export default function TransactionsPage() {
   }
 
   function handleEdit(tx: TransactionWithDetails) {
+    // tx.sharedUuid is set for member-loaded transactions (owner's DB);
+    // fall back to checking the account's sharedUuid for owner transactions
+    const txAccount = accounts.find(a => a.id === tx.accountId);
+    const resolvedSharedUuid = tx.sharedUuid ?? (txAccount?.sharedUuid ? txAccount.sharedUuid : null);
+    const accountId = resolvedSharedUuid ? `shared:${resolvedSharedUuid}` : String(tx.accountId);
     setFormData({
-      accountId: String(tx.accountId),
+      accountId,
       categoryId: tx.categoryId ? String(tx.categoryId) : '',
       amount: String(tx.amount),
       type: tx.type,
@@ -110,13 +138,18 @@ export default function TransactionsPage() {
       const sharedPrefix = 'shared:';
       if (formData.accountId.startsWith(sharedPrefix)) {
         const uuid = formData.accountId.slice(sharedPrefix.length);
-        await api.addSharedTransaction(uuid, {
+        const txData = {
           categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
           amount: Number(formData.amount),
           type: formData.type as 'income' | 'expense',
           description: formData.description || undefined,
           date: formData.date,
-        });
+        };
+        if (editingId) {
+          await api.updateSharedTransaction(uuid, editingId, txData);
+        } else {
+          await api.addSharedTransaction(uuid, txData);
+        }
       } else {
         const payload = {
           accountId: Number(formData.accountId),
@@ -407,9 +440,12 @@ export default function TransactionsPage() {
                     {sharedAccounts.length > 0 ? (
                       <>
                         <optgroup label={t('txOwnAccountGroup')}>
-                          {accounts.filter(a => !a.sharedUuid).map((acc) => (
-                            <option key={acc.id} value={acc.id}>{acc.name}</option>
-                          ))}
+                          {(() => {
+                            const sharedAccountIds = new Set(sharedAccounts.filter(sa => sa.isOwner).map(sa => sa.accountId));
+                            return accounts.filter(a => !sharedAccountIds.has(a.id)).map((acc) => (
+                              <option key={acc.id} value={acc.id}>{acc.name}</option>
+                            ));
+                          })()}
                         </optgroup>
                         <optgroup label={t('txSharedAccountGroup')}>
                           {sharedAccounts.map((sa) => (

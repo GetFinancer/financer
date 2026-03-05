@@ -513,6 +513,7 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsNoDebts: 'No outstanding debts.',
   sharedAccountsNobodyOwes: 'Nobody owes you anything.',
   sharedAccountsEigenanteil: 'Own share',
+  sharedAccountsSettlement: 'Settlement',
   sharedAccountsDebtSectionIOwePre: 'You owe',
   sharedAccountsDebtSectionTheyOwePre: 'Owes you',
 };

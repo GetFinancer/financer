@@ -75,6 +75,7 @@ export interface TransactionWithDetails extends Transaction {
   transferToAccountName?: string;
   addedBy?: string; // tenant who added this tx (for shared accounts)
   split?: TransactionSplit; // split data for shared account transactions
+  sharedUuid?: string; // uuid of the shared account (set for member-loaded transactions)
 }
 
 // API Request/Response Types

@@ -274,6 +274,10 @@ export default function SharedAccountsPage() {
     if (desc.startsWith('Eigenanteil: ')) {
       return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil: '.length);
     }
+    if (desc.startsWith('Schuldenausgleich / Settlement')) {
+      const match = desc.match(/\(([^)]+)\)$/);
+      return match ? `${t('sharedAccountsSettlement')} (${match[1]})` : t('sharedAccountsSettlement');
+    }
     return desc;
   }
 
