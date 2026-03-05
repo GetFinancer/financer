@@ -325,7 +325,35 @@ accountsRouter.delete('/:id', (req, res) => {
   }
 
   if (force) {
-    db.prepare('DELETE FROM transactions WHERE account_id = ? OR transfer_to_account_id = ?').run(id, id);
+    const accountName = (existing as any).name as string;
+
+    // Handle transfer transactions: preserve them on the other account instead of deleting
+    const transfers = db.prepare(
+      `SELECT * FROM transactions WHERE (account_id = ? OR transfer_to_account_id = ?) AND type = 'transfer'`
+    ).all(id, id) as any[];
+
+    for (const tx of transfers) {
+      if (String(tx.account_id) === String(id)) {
+        // This account was the SOURCE → convert to income on the destination account
+        const desc = tx.description
+          ? `${tx.description} [${accountName}]`
+          : `Umbuchung von / Transfer from: ${accountName}`;
+        db.prepare(
+          `UPDATE transactions SET type = 'income', transfer_to_account_id = NULL, description = ? WHERE id = ?`
+        ).run(desc, tx.id);
+      } else {
+        // This account was the DESTINATION → convert to expense on the source account
+        const desc = tx.description
+          ? `${tx.description} [${accountName}]`
+          : `Umbuchung nach / Transfer to: ${accountName}`;
+        db.prepare(
+          `UPDATE transactions SET type = 'expense', transfer_to_account_id = NULL, description = ? WHERE id = ?`
+        ).run(desc, tx.id);
+      }
+    }
+
+    // Delete only non-transfer transactions directly on this account
+    db.prepare(`DELETE FROM transactions WHERE account_id = ? AND type != 'transfer'`).run(id);
   }
 
   // Auto-stop sharing if this account was shared
