@@ -490,7 +490,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                                 {!hasSplit && (
                                   <p className="text-xs text-green-600/80 italic">{t('sharedAccountsSplitPayerNote')}</p>
                                 )}
-                                <div className="flex gap-2 pt-1">
+                                <div className="flex gap-2 pt-1 items-center">
                                   <button
                                     onClick={() => fillEqualSplit(tx.id, tx.amount)}
                                     className="text-xs px-2 py-1 border border-border rounded hover:bg-background transition-colors"
@@ -505,20 +505,22 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                                   </button>
                                   <button
                                     onClick={() => setOpenSplitTxId(null)}
-                                    className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
+                                    className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground ml-auto"
                                   >
-                                    {t('cancel')}
+                                    {t('close')}
                                   </button>
                                 </div>
                               </>
                             )}
                             {!isMyTx && (
-                              <button
-                                onClick={() => setOpenSplitTxId(null)}
-                                className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
-                              >
-                                {t('cancel')}
-                              </button>
+                              <div className="flex justify-end pt-1">
+                                <button
+                                  onClick={() => setOpenSplitTxId(null)}
+                                  className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
+                                >
+                                  {t('close')}
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}

@@ -4,6 +4,7 @@ const de = {
   save: 'Speichern',
   saveAndAddAnother: 'Speichern & Weitere',
   cancel: 'Abbrechen',
+  close: 'Schließen',
   done: 'Fertig',
   delete: 'Löschen',
   edit: 'Bearbeiten',
