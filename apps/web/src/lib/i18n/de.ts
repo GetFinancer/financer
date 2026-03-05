@@ -460,6 +460,7 @@ const de = {
   sharedAccountsSplitApply: 'Übernehmen',
   sharedAccountsSplitSettled: 'Beglichen',
   sharedAccountsSplitPayerLabel: 'Zahler',
+  sharedAccountsSplitRemainder: 'Rest',
   sharedAccountsSplitOpen: 'Aufteilen',
   sharedAccountsDeleteTx: 'Löschen',
   sharedAccountsViewDetails: 'Details',

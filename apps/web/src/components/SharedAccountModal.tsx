@@ -362,92 +362,116 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
 
                     {/* Split panel */}
                     {isSplitOpen && (
-                      <div className="bg-card/40 border border-border/60 rounded-lg p-3 my-1 space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">{t('sharedAccountsSplitTitle')}</div>
-                        {allMembersForSplit.map(member => {
-                          const share = tx.split?.shares.find(s => s.tenant === member.tenant);
-                          const draftAmt = splitDraftAmounts[tx.id]?.[member.tenant] ?? '';
-                          const isPayer = member.tenant === payerTenant;
-                          const isLocked = !isPayer && share?.settled === true;
+                      <div className="bg-card/40 border border-border/60 rounded-lg p-3 my-1">
+                        <div className="text-xs font-medium text-muted-foreground mb-3">{t('sharedAccountsSplitTitle')}</div>
+                        <div className="space-y-2">
+                          {allMembersForSplit.map(member => {
+                            const share = tx.split?.shares.find(s => s.tenant === member.tenant);
+                            const draftAmt = splitDraftAmounts[tx.id]?.[member.tenant] ?? '';
+                            const isPayer = member.tenant === payerTenant;
+                            const isLocked = !isPayer && share?.settled === true;
+                            const initial = member.displayName.charAt(0).toUpperCase();
 
-                          return (
-                            <div key={member.tenant} className="flex items-center gap-2">
-                              <span className="text-xs flex-1 truncate">
-                                {member.displayName}
-                                {isPayer && <span className="text-muted-foreground ml-1">({t('sharedAccountsSplitPayerLabel')})</span>}
-                              </span>
-                              {isLocked ? (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs text-muted-foreground w-24 text-right">
-                                    {formatCurrency(share!.amount, undefined, numberLocale)}
-                                  </span>
-                                  <span className="text-xs text-green-500">✓</span>
+                            return (
+                              <div
+                                key={member.tenant}
+                                className={`rounded-lg border p-3 ${isPayer ? 'border-border/40 bg-background/30' : 'border-border bg-background'}`}
+                              >
+                                {/* Name + badges row */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                                    {initial}
+                                  </div>
+                                  <span className="text-sm font-medium flex-1 truncate">{member.displayName}</span>
+                                  {isPayer && (
+                                    <span className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full flex-shrink-0">
+                                      {t('sharedAccountsSplitPayerLabel')}
+                                    </span>
+                                  )}
+                                  {isLocked && (
+                                    <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full flex-shrink-0">
+                                      ✓ {t('sharedAccountsSplitSettled')}
+                                    </span>
+                                  )}
+                                  {hasSplit && share !== undefined && !isLocked && !isPayer && share.settled && !isMyTx && (
+                                    <span className="text-xs text-green-500 flex-shrink-0">✓</span>
+                                  )}
                                 </div>
-                              ) : isPayer ? (
-                                <span className="text-xs text-muted-foreground w-24 text-right italic">
-                                  {draftAmt ? formatCurrency(Number(draftAmt), undefined, numberLocale) : '—'}
-                                </span>
-                              ) : isMyTx ? (
-                                <input
-                                  type="number"
-                                  value={draftAmt}
-                                  onChange={e => updateSplitAmount(tx.id, member.tenant, e.target.value, tx.amount, payerTenant)}
-                                  className="w-24 px-2 py-1 text-xs border border-border rounded bg-background text-right"
-                                  step="0.01"
-                                  min="0"
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground w-24 text-right">
-                                  {share ? formatCurrency(share.amount, undefined, numberLocale) : '—'}
-                                </span>
-                              )}
-                              {hasSplit && share !== undefined && !isLocked && isMyTx && (
-                                <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
-                                  <input
-                                    type="checkbox"
-                                    checked={share.settled}
-                                    onChange={() => handleToggleSettled(tx.id, member.tenant, share.settled)}
-                                    className="cursor-pointer"
-                                  />
-                                  <span className={share.settled ? 'text-green-500' : 'text-muted-foreground'}>
-                                    {t('sharedAccountsSplitSettled')}
-                                  </span>
-                                </label>
-                              )}
-                              {hasSplit && share !== undefined && !isLocked && !isMyTx && share.settled && (
-                                <span className="text-xs text-green-500">✓</span>
-                              )}
-                            </div>
-                          );
-                        })}
+                                {/* Amount row */}
+                                <div className="pl-9">
+                                  {isLocked ? (
+                                    <div className="text-sm font-semibold text-right">
+                                      {formatCurrency(share!.amount, undefined, numberLocale)}
+                                    </div>
+                                  ) : isPayer ? (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground italic">{t('sharedAccountsSplitRemainder')}</span>
+                                      <span className="text-sm font-medium text-muted-foreground">
+                                        {draftAmt ? formatCurrency(Number(draftAmt), undefined, numberLocale) : '—'}
+                                      </span>
+                                    </div>
+                                  ) : isMyTx ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        value={draftAmt}
+                                        onChange={e => updateSplitAmount(tx.id, member.tenant, e.target.value, tx.amount, payerTenant)}
+                                        className="flex-1 min-w-0 px-3 py-1.5 text-sm border border-border rounded-md bg-background text-right font-medium focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                        step="0.01"
+                                        min="0"
+                                      />
+                                      {hasSplit && share !== undefined && (
+                                        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none flex-shrink-0">
+                                          <input
+                                            type="checkbox"
+                                            checked={share.settled}
+                                            onChange={() => handleToggleSettled(tx.id, member.tenant, share.settled)}
+                                            className="cursor-pointer"
+                                          />
+                                          <span className={share.settled ? 'text-green-500' : 'text-muted-foreground'}>
+                                            {t('sharedAccountsSplitSettled')}
+                                          </span>
+                                        </label>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-right">
+                                      {share ? formatCurrency(share.amount, undefined, numberLocale) : '—'}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
 
                         {isMyTx && (
-                          <div className="flex gap-2 pt-1 items-center">
+                          <div className="flex gap-2 pt-3 items-center">
                             <button
                               onClick={() => fillEqualSplit(tx)}
-                              className="text-xs px-2 py-1 border border-border rounded hover:bg-background transition-colors"
+                              className="text-xs px-2 py-1.5 border border-border rounded hover:bg-background transition-colors"
                             >
                               {t('sharedAccountsSplitEqual')}
                             </button>
                             <button
                               onClick={() => handleApplySplit(tx.id, payerTenant)}
-                              className="text-xs px-2 py-1 nav-item-active rounded hover:opacity-90 transition-all"
+                              className="text-xs px-3 py-1.5 nav-item-active rounded hover:opacity-90 transition-all"
                             >
                               {t('sharedAccountsSplitApply')}
                             </button>
                             <button
                               onClick={() => setOpenSplitTxId(null)}
-                              className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground ml-auto"
+                              className="text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground ml-auto"
                             >
                               {t('close')}
                             </button>
                           </div>
                         )}
                         {!isMyTx && (
-                          <div className="flex justify-end pt-1">
+                          <div className="flex justify-end pt-3">
                             <button
                               onClick={() => setOpenSplitTxId(null)}
-                              className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
+                              className="text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground"
                             >
                               {t('close')}
                             </button>

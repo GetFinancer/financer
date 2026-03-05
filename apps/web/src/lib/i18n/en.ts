@@ -452,6 +452,7 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsSplitApply: 'Apply',
   sharedAccountsSplitSettled: 'Settled',
   sharedAccountsSplitPayerLabel: 'Payer',
+  sharedAccountsSplitRemainder: 'Remainder',
   sharedAccountsSplitOpen: 'Split',
   sharedAccountsDeleteTx: 'Delete',
   sharedAccountsViewDetails: 'Details',
