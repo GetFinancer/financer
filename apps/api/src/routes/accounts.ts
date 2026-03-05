@@ -25,6 +25,7 @@ interface AccountRow {
   payment_day: number | null;
   linked_account_id: number | null;
   linked_account_name?: string | null;
+  shared_uuid: string | null;
   created_at: string;
   updated_at: string;
   balance: number;
