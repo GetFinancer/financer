@@ -1479,7 +1479,7 @@ export default function Dashboard() {
                   required
                 >
                   <option value="">{t('txSelectAccount')}</option>
-                  {accounts.map((acc) => (
+                  {accounts.filter(acc => !sharedAccountIds.has(Number(acc.id))).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name}
                     </option>
