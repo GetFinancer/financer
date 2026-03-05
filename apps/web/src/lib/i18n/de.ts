@@ -465,6 +465,7 @@ const de = {
   sharedAccountsModePoolDesc: 'Ausgaben aufteilen & einzelne Anteile abhaken wenn bezahlt.',
   sharedAccountsNoAccountsToShare: 'Alle deine Konten sind bereits geteilt.',
   sharedAccountsSelectAccount: 'Konto auswählen',
+  sharedAccountsSelectAccountPlaceholder: '— Konto wählen —',
 
   // Join page
   joinTitle: 'Einladung annehmen',

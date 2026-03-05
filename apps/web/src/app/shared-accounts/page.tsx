@@ -187,18 +187,18 @@ export default function SharedAccountsPage() {
               <>
                 <div className="space-y-2">
                   <label className="text-xs text-muted-foreground uppercase tracking-wide">{t('sharedAccountsSelectAccount')}</label>
-                  <div className="space-y-1">
+                  <select
+                    value={shareAccountId ?? ''}
+                    onChange={e => setShareAccountId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm focus:outline-none focus:border-primary"
+                  >
+                    <option value="">{t('sharedAccountsSelectAccountPlaceholder')}</option>
                     {ownAccounts.map(a => (
-                      <button
-                        key={a.id}
-                        onClick={() => setShareAccountId(a.id)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm border transition-colors ${shareAccountId === a.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-card'}`}
-                      >
-                        {a.name}
-                        <span className="ml-2 text-xs text-muted-foreground">{formatCurrency(a.balance, undefined, numberLocale)}</span>
-                      </button>
+                      <option key={a.id} value={a.id}>
+                        {a.name} — {formatCurrency(a.balance, undefined, numberLocale)}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 <div className="space-y-2">
