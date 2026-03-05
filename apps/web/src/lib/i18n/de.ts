@@ -510,6 +510,9 @@ const de = {
   sharedAccountsLinkCheck: 'Prüfen',
   sharedAccountsInviteTokenHint: 'Teile diesen Link mit der Person, die du einladen möchtest.',
   sharedAccountsInviteCopied: 'Kopiert ✓',
+  sharedAccountsEigenanteil: 'Eigenanteil',
+  sharedAccountsDebtSectionIOwePre: 'Du schuldest',
+  sharedAccountsDebtSectionTheyOwePre: 'Schuldet dir',
 } as const;
 
 export type TranslationKey = keyof typeof de;
