@@ -333,6 +333,10 @@ function initSchema() {
   try { db.exec(`ALTER TABLE accounts ADD COLUMN payment_day INTEGER`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE accounts ADD COLUMN linked_account_id INTEGER REFERENCES accounts(id)`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE accounts ADD COLUMN is_default INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
+  // v1.6.0: Shared accounts
+  try { db.exec(`ALTER TABLE accounts ADD COLUMN shared_uuid TEXT`); } catch (e) { /* exists */ }
+  try { db.exec(`ALTER TABLE transactions ADD COLUMN added_by TEXT`); } catch (e) { /* exists */ }
+  try { db.exec(`ALTER TABLE shared_splits ADD COLUMN payer_settlement_tx_id INTEGER`); } catch (e) { /* exists */ }
 
   // Credit card bills table
   db.exec(`
@@ -354,6 +358,28 @@ function initSchema() {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_credit_card_bills_account ON credit_card_bills(account_id);
     CREATE INDEX IF NOT EXISTS idx_credit_card_bills_payment_date ON credit_card_bills(payment_date);
+  `);
+
+  // Splitwise tables (used in shared account owner's DB)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shared_splits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      shared_uuid TEXT NOT NULL,
+      split_type TEXT NOT NULL CHECK(split_type IN ('equal', 'custom')),
+      payer_settlement_tx_id INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shared_split_shares (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      split_id INTEGER NOT NULL REFERENCES shared_splits(id) ON DELETE CASCADE,
+      tenant TEXT NOT NULL,
+      amount REAL NOT NULL,
+      settled INTEGER DEFAULT 0
+    )
   `);
 
   // Insert default categories if none exist

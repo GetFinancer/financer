@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptionRequest, CreditCardBillWithDetails, TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
+import { DashboardSummary, RecurringInstanceWithDetails, CreateRecurringExceptionRequest, CreditCardBillWithDetails, TransactionWithDetails, AccountWithBalance, Category, SharedAccountInfo } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
 import { RecurringQuickModal } from '@/components/RecurringQuickModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function Dashboard() {
   const { t, numberLocale } = useTranslation();
@@ -73,6 +74,10 @@ export default function Dashboard() {
     remainingBudget: true,
   });
   const [showCardSettings, setShowCardSettings] = useState(false);
+  const [includeSharedAccounts, setIncludeSharedAccounts] = useState(false);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
+  const [saveError, setSaveError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Swipe-to-dismiss state
   const [modalDragY, setModalDragY] = useState(0);
@@ -93,7 +98,18 @@ export default function Dashboard() {
     if (savedHideCompleted) {
       setHideCompleted(savedHideCompleted === 'true');
     }
+    const savedIncludeShared = localStorage.getItem('dashboardIncludeShared');
+    if (savedIncludeShared) {
+      setIncludeSharedAccounts(savedIncludeShared === 'true');
+    }
+    // Load shared accounts (silently fail if not cloudhost)
+    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
   }, []);
+
+  function updateIncludeShared(val: boolean) {
+    setIncludeSharedAccounts(val);
+    localStorage.setItem('dashboardIncludeShared', String(val));
+  }
 
   // Save card visibility to localStorage
   function updateCardVisibility(key: string, visible: boolean) {
@@ -237,7 +253,7 @@ export default function Dashboard() {
     try {
       const amount = parseFloat(editAmount);
       if (isNaN(amount) || amount <= 0) {
-        alert(t('confirmValidAmount'));
+        setSaveError(t('confirmValidAmount'));
         return;
       }
 
@@ -262,24 +278,27 @@ export default function Dashboard() {
       loadInstances(false);
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
   async function handleResetInstanceException() {
     if (!editingInstance || !editingInstance.exceptionId) return;
 
-    if (!confirm(t('confirmResetException'))) return;
-
-    try {
-      await api.deleteRecurringException(editingInstance.recurringId, editingInstance.exceptionId);
-      closeEditInstance();
-      loadInstances(false);
-      loadDashboard();
-    } catch (error) {
-      console.error('Failed to reset exception:', error);
-      alert(t('errorResetting'));
-    }
+    setConfirmDialog({
+      message: t('confirmResetException'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteRecurringException(editingInstance.recurringId, editingInstance.exceptionId!);
+          closeEditInstance();
+          loadInstances(false);
+          loadDashboard();
+        } catch (error) {
+          setSaveError(t('errorResetting'));
+        }
+      },
+    });
   }
 
   async function handleApplyToFuture() {
@@ -287,21 +306,24 @@ export default function Dashboard() {
 
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount <= 0) {
-      alert(t('confirmValidAmount'));
+      setSaveError(t('confirmValidAmount'));
       return;
     }
 
-    if (!confirm(t('confirmApplyFuture', { amount: formatCurrency(amount, 'EUR', numberLocale), date: formatDate(editingInstance.dueDate, numberLocale) }))) return;
-
-    try {
-      await api.updateRecurringAmountFromDate(editingInstance.recurringId, amount, editingInstance.dueDate);
-      closeEditInstance();
-      loadInstances(false);
-      loadDashboard();
-    } catch (error) {
-      console.error('Failed to apply to future:', error);
-      alert(t('errorApplying'));
-    }
+    setConfirmDialog({
+      message: t('confirmApplyFuture', { amount: formatCurrency(amount, 'EUR', numberLocale), date: formatDate(editingInstance.dueDate, numberLocale) }),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.updateRecurringAmountFromDate(editingInstance.recurringId, amount, editingInstance.dueDate);
+          closeEditInstance();
+          loadInstances(false);
+          loadDashboard();
+        } catch (error) {
+          setSaveError(t('errorApplying'));
+        }
+      },
+    });
   }
 
   // Transaction modal functions
@@ -349,49 +371,78 @@ export default function Dashboard() {
     });
   }
 
+  function refreshSharedAccounts() {
+    api.getSharedAccounts().then(setSharedAccounts).catch(() => {});
+  }
+
   async function handleSaveTransaction(e: React.FormEvent) {
     e.preventDefault();
 
     try {
-      const payload = {
-        accountId: Number(txFormData.accountId),
-        categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
-        amount: Number(txFormData.amount),
-        type: txFormData.type,
-        description: txFormData.description || undefined,
-        date: txFormData.date,
-        transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
-          ? Number(txFormData.transferToAccountId)
-          : undefined,
-      };
-
-      if (editingTransaction) {
-        await api.updateTransaction(editingTransaction.id, payload);
+      const sharedPrefix = 'shared:';
+      if (txFormData.accountId.startsWith(sharedPrefix)) {
+        const uuid = txFormData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type as 'income' | 'expense',
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+        });
+        refreshSharedAccounts();
       } else {
-        await api.createTransaction(payload);
+        const payload = {
+          accountId: Number(txFormData.accountId),
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type,
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+          transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
+            ? Number(txFormData.transferToAccountId)
+            : undefined,
+        };
+        if (editingTransaction) {
+          await api.updateTransaction(editingTransaction.id, payload);
+        } else {
+          await api.createTransaction(payload);
+        }
       }
       closeTransactionModal();
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
   async function handleSaveAndContinueTransaction() {
     try {
-      const payload = {
-        accountId: Number(txFormData.accountId),
-        categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
-        amount: Number(txFormData.amount),
-        type: txFormData.type,
-        description: txFormData.description || undefined,
-        date: txFormData.date,
-        transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
-          ? Number(txFormData.transferToAccountId)
-          : undefined,
-      };
-      await api.createTransaction(payload);
+      const sharedPrefix = 'shared:';
+      if (txFormData.accountId.startsWith(sharedPrefix)) {
+        const uuid = txFormData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type as 'income' | 'expense',
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+        });
+        refreshSharedAccounts();
+      } else {
+        const payload = {
+          accountId: Number(txFormData.accountId),
+          categoryId: txFormData.categoryId ? Number(txFormData.categoryId) : undefined,
+          amount: Number(txFormData.amount),
+          type: txFormData.type,
+          description: txFormData.description || undefined,
+          date: txFormData.date,
+          transferToAccountId: txFormData.type === 'transfer' && txFormData.transferToAccountId
+            ? Number(txFormData.transferToAccountId)
+            : undefined,
+        };
+        await api.createTransaction(payload);
+      }
       // Keep form open — reset only amount, description, category
       setTxFormData(prev => ({
         ...prev,
@@ -403,21 +454,25 @@ export default function Dashboard() {
       loadRecentTransactions();
       loadDashboard();
     } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
+      setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
   }
 
-  async function handleDeleteTransaction(id: number) {
-    if (!confirm(t('transactionsConfirmDelete'))) return;
-
-    try {
-      await api.deleteTransaction(id);
-      closeTransactionModal();
-      loadRecentTransactions();
-      loadDashboard();
-    } catch (error) {
-      alert(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
-    }
+  function handleDeleteTransaction(id: number) {
+    setConfirmDialog({
+      message: t('transactionsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteTransaction(id);
+          closeTransactionModal();
+          loadRecentTransactions();
+          loadDashboard();
+        } catch (error) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleCreateTxCategoryFromDesc(name: string) {
@@ -558,8 +613,55 @@ export default function Dashboard() {
     ? summary.budgetBalance + pendingIncome - pendingExpenses
     : 0;
 
+  // Shared account IDs owned by this tenant
+  const sharedAccountIds = new Set(sharedAccounts.filter(s => s.isOwner).map(s => s.accountId));
+
+  function AccountTypeIcon({ type, shared, className = 'w-3.5 h-3.5' }: { type?: string; shared?: boolean; className?: string }) {
+    if (shared) return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    );
+    if (type === 'cash') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    );
+    if (type === 'credit') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    );
+    if (type === 'savings') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+    // bank (default)
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    );
+  }
+
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
+      {saveError && (
+        <div className="fixed top-4 right-4 z-[300] p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm shadow-lg flex items-center gap-3">
+          {saveError}
+          <button onClick={() => setSaveError('')} className="opacity-60 hover:opacity-100">×</button>
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-8 text-muted-foreground">{t('loading')}</div>
       ) : !summary ? (
@@ -629,6 +731,21 @@ export default function Dashboard() {
                         <span className="text-sm">{t('dashboardRemaining')}</span>
                       </label>
 
+                      {sharedAccounts.length > 0 && (
+                        <>
+                          <div className="border-t border-border pt-3 mt-3">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={includeSharedAccounts}
+                                onChange={(e) => updateIncludeShared(e.target.checked)}
+                                className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
+                              />
+                              <span className="text-sm">{t('dashboardIncludeShared')}</span>
+                            </label>
+                          </div>
+                        </>
+                      )}
                       {summary.accounts.length > 0 && (
                         <>
                           <div className="border-t border-border pt-3 mt-3">
@@ -709,11 +826,30 @@ export default function Dashboard() {
                 .filter((account) => cardVisibility[`account_${account.id}`] !== false)
                 .map((account) => (
                   <div key={account.id} className="kpi-card">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 truncate">
-                      {account.name}
-                    </p>
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <AccountTypeIcon type={account.type} shared={sharedAccountIds.has(account.id)} className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+                        {account.name}
+                      </p>
+                    </div>
                     <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
+                    </p>
+                  </div>
+                ))}
+              {/* Member-shared account cards (live in owner's DB, not in summary.accounts) */}
+              {includeSharedAccounts && sharedAccounts
+                .filter(sa => !sa.isOwner)
+                .map(sa => (
+                  <div key={sa.uuid} className="kpi-card">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <AccountTypeIcon shared className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+                        {sa.accountName}
+                      </p>
+                    </div>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                      {formatCurrency(sa.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
                 ))}
@@ -1343,11 +1479,20 @@ export default function Dashboard() {
                   required
                 >
                   <option value="">{t('txSelectAccount')}</option>
-                  {accounts.map((acc) => (
+                  {accounts.filter(acc => !sharedAccountIds.has(Number(acc.id))).map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name}
                     </option>
                   ))}
+                  {sharedAccounts.length > 0 && (
+                    <optgroup label={t('txSharedAccountGroup')}>
+                      {sharedAccounts.map((sa) => (
+                        <option key={sa.uuid} value={`shared:${sa.uuid}`}>
+                          {sa.accountName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 

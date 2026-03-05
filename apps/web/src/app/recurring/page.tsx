@@ -8,12 +8,14 @@ import type {
   RecurringTransactionWithDetails,
   Category,
   AccountWithBalance,
+  SharedAccountInfo,
   CreateRecurringTransactionRequest,
   RecurringFrequency,
   RecurringOccurrence,
   CreateRecurringExceptionRequest,
 } from '@financer/shared';
 import { useTranslation } from '@/lib/i18n';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function RecurringPage() {
   const { t, numberLocale } = useTranslation();
@@ -32,10 +34,12 @@ export default function RecurringPage() {
   const [recurring, setRecurring] = useState<RecurringTransactionWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Occurrences view state
   const [viewingOccurrences, setViewingOccurrences] = useState<RecurringTransactionWithDetails | null>(null);
@@ -97,14 +101,16 @@ export default function RecurringPage() {
 
   async function loadData() {
     try {
-      const [recurringData, categoriesData, accountsData] = await Promise.all([
+      const [recurringData, categoriesData, accountsData, sharedData] = await Promise.all([
         api.getRecurringTransactions(),
         api.getCategories(),
         api.getAccounts(),
+        api.getSharedAccounts().catch(() => [] as SharedAccountInfo[]),
       ]);
       setRecurring(recurringData);
       setCategories(categoriesData);
       setAccounts(accountsData);
+      setSharedAccounts(sharedData);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -164,15 +170,19 @@ export default function RecurringPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('recurringConfirmDelete'))) return;
-
-    try {
-      await api.deleteRecurringTransaction(id);
-      loadData();
-    } catch (err: any) {
-      setError(err.message || t('errorDeleting'));
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('recurringConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteRecurringTransaction(id);
+          loadData();
+        } catch (err: any) {
+          setError(err.message || t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleToggleActive(item: RecurringTransactionWithDetails) {
@@ -282,16 +292,20 @@ export default function RecurringPage() {
     }
 
     const formattedDate = new Date(editingOccurrence.date).toLocaleDateString(numberLocale);
-    if (!confirm(t('confirmApplyFuture', { amount: amount.toFixed(2) + ' \u20AC', date: formattedDate }))) return;
-
-    try {
-      await api.updateRecurringAmountFromDate(viewingOccurrences.id, amount, editingOccurrence.date);
-      closeExceptionEdit();
-      closeOccurrences();
-      loadData();
-    } catch (err: any) {
-      setError(err.message || t('errorSaving'));
-    }
+    setConfirmDialog({
+      message: t('confirmApplyFuture', { amount: amount.toFixed(2) + ' \u20AC', date: formattedDate }),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.updateRecurringAmountFromDate(viewingOccurrences.id, amount, editingOccurrence.date);
+          closeExceptionEdit();
+          closeOccurrences();
+          loadData();
+        } catch (err: any) {
+          setError(err.message || t('errorSaving'));
+        }
+      },
+    });
   }
 
   // Build hierarchical category list for dropdown
@@ -325,6 +339,15 @@ export default function RecurringPage() {
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('recurringTitle')}</h1>
@@ -392,11 +415,24 @@ export default function RecurringPage() {
                     className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">{t('recurringNoAccount')}</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </option>
-                    ))}
+                    {sharedAccounts.length > 0 ? (
+                      <>
+                        <optgroup label={t('txOwnAccountGroup')}>
+                          {accounts.filter(a => !a.sharedUuid).map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={t('txSharedAccountGroup')}>
+                          {sharedAccounts.map((sa) => (
+                            <option key={sa.uuid} value={sa.accountId}>{sa.accountName}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 

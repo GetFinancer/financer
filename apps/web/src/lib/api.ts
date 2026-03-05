@@ -29,6 +29,10 @@ import type {
   CreditCardBillWithDetails,
   AnalyticsData,
   TenantStatus,
+  SharedAccountInfo,
+  SharedAccountInvite,
+  SharedBalanceResult,
+  SplitTransactionRequest,
 } from '@financer/shared';
 
 async function fetchApi<T>(
@@ -142,8 +146,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  deleteAccount: (id: number) =>
-    fetchApi<{ success: boolean }>(`/accounts/${id}`, {
+  deleteAccount: (id: number, force = false) =>
+    fetchApi<{ success: boolean }>(`/accounts/${id}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     }),
 
@@ -328,4 +332,92 @@ export const api = {
 
   markReleaseNotesSeen: () =>
     fetchApi<{ version: string }>('/auth/release-notes-seen', { method: 'POST' }),
+
+  // Shared Accounts (Cloud only)
+  getSharedAccounts: () =>
+    fetchApi<SharedAccountInfo[]>('/shared-accounts'),
+
+  getSharedAccount: (uuid: string) =>
+    fetchApi<SharedAccountInfo>(`/shared-accounts/${uuid}`),
+
+  shareAccount: (accountId: number, mode: 'joint' | 'pool' = 'joint') =>
+    fetchApi<{ uuid: string; alreadyShared?: boolean }>(`/accounts/${accountId}/share`, {
+      method: 'POST',
+      body: JSON.stringify({ mode }),
+    }),
+
+  unshareAccount: (accountId: number) =>
+    fetchApi<{ success: boolean }>(`/accounts/${accountId}/share`, {
+      method: 'DELETE',
+    }),
+
+  createInvite: (uuid: string, durationHours = 48) =>
+    fetchApi<SharedAccountInvite>(`/shared-accounts/${uuid}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ durationHours }),
+    }),
+
+  getInvitePreview: (token: string) =>
+    fetchApi<{ sharedUuid: string; ownerTenant: string; accountName: string; expiresAt: string }>(`/shared-accounts/join/${token}`),
+
+  joinSharedAccount: (token: string) =>
+    fetchApi<{ sharedUuid: string }>(`/shared-accounts/join/${token}`, {
+      method: 'POST',
+    }),
+
+  deleteSharedAccount: (uuid: string) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}`, {
+      method: 'DELETE',
+    }),
+
+  removeMember: (uuid: string, memberTenant: string) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/members/${memberTenant}`, {
+      method: 'DELETE',
+    }),
+
+  leaveSharedAccount: (uuid: string) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/members/me`, {
+      method: 'DELETE',
+    }),
+
+  getSharedAccountTransactions: (uuid: string) =>
+    fetchApi<TransactionWithDetails[]>(`/shared-accounts/${uuid}/transactions`),
+
+  addSharedTransaction: (uuid: string, data: Omit<CreateTransactionRequest, 'accountId'>) =>
+    fetchApi<Transaction>(`/shared-accounts/${uuid}/transactions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSharedTransaction: (uuid: string, txId: number, data: Omit<CreateTransactionRequest, 'accountId'>) =>
+    fetchApi<Transaction>(`/shared-accounts/${uuid}/transactions/${txId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteSharedTransaction: (uuid: string, txId: number) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/transactions/${txId}`, {
+      method: 'DELETE',
+    }),
+
+  splitTransaction: (uuid: string, txId: number, data: SplitTransactionRequest) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/transactions/${txId}/split`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getSharedBalance: (uuid: string) =>
+    fetchApi<SharedBalanceResult>(`/shared-accounts/${uuid}/balance`),
+
+  settleUp: (uuid: string, amount: number, date: string, opts?: { settlingTenant?: string; creditorTenant?: string; fromAccountId?: number; categoryId?: number }) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/settle`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, date, ...opts }),
+    }),
+
+  settleShare: (uuid: string, txId: number, tenant: string, settled: boolean) =>
+    fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/transactions/${txId}/split/share`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tenant, settled }),
+    }),
 };

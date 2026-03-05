@@ -15,6 +15,7 @@ export interface Account {
   billingDay?: number; // Day of month when billing cycle ends (e.g., 20)
   paymentDay?: number; // Day of month when payment is due (e.g., 27)
   linkedAccountId?: number; // Bank account that pays the credit card
+  sharedUuid?: string; // Set when account is shared via shared accounts feature
   createdAt: string;
   updatedAt: string;
 }
@@ -54,12 +55,27 @@ export interface Transaction {
   updatedAt: string;
 }
 
+export interface SplitShare {
+  tenant: string;
+  amount: number;
+  settled: boolean;
+}
+
+export interface TransactionSplit {
+  splitId: number;
+  splitType: 'equal' | 'custom';
+  shares: SplitShare[];
+}
+
 export interface TransactionWithDetails extends Transaction {
   accountName: string;
   categoryName?: string;
   categoryColor?: string;
   parentCategoryName?: string;
   transferToAccountName?: string;
+  addedBy?: string; // tenant who added this tx (for shared accounts)
+  split?: TransactionSplit; // split data for shared account transactions
+  sharedUuid?: string; // uuid of the shared account (set for member-loaded transactions)
 }
 
 // API Request/Response Types
@@ -407,6 +423,54 @@ export interface AdminTenant {
 export interface UpdateTenantRequest {
   status?: TenantPlan;
   trialEndsAt?: string;
+}
+
+// Shared Account Types (Cloud only)
+export interface SharedAccountMember {
+  tenant: string;
+  displayName: string | null;
+  joinedAt: string;
+}
+
+export interface SharedAccountInfo {
+  uuid: string;
+  ownerTenant: string;
+  accountId: number;
+  accountName: string;
+  balance: number;
+  createdAt: string;
+  members: SharedAccountMember[];
+  isOwner: boolean;
+  mode: 'joint' | 'pool';
+}
+
+export interface SharedAccountInvite {
+  token: string;
+  sharedUuid: string;
+  expiresAt: string;
+}
+
+export interface SharedBalanceSource {
+  description?: string;
+  amount: number;
+  isOffset?: boolean; // true = counter-debt that reduces the net balance
+}
+
+export interface SharedBalance {
+  tenant: string;
+  displayName: string | null;
+  owes: number; // positive = this member owes owner; negative = owner owes member
+  sources: SharedBalanceSource[];
+}
+
+export interface SharedBalanceResult {
+  balances: SharedBalance[];
+  totalUnsettled: number;
+}
+
+export interface SplitTransactionRequest {
+  type: 'equal' | 'custom';
+  shares?: Record<string, number>; // tenant -> amount (for custom split)
 }
 
 // API Response Types

@@ -73,14 +73,14 @@ export function BottomNav() {
       {/* More Menu Overlay */}
       {showMore && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-black/50 sidebar:hidden"
           onClick={() => setShowMore(false)}
         />
       )}
 
       {/* More Menu Popup */}
       {showMore && (
-        <div className="fixed bottom-20 right-4 z-40 glass-card-elevated p-2 min-w-[160px] md:hidden">
+        <div className="fixed bottom-20 right-4 z-40 glass-card-elevated p-2 min-w-[160px] sidebar:hidden">
           {moreNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -144,7 +144,7 @@ export function BottomNav() {
       )}
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav border-t border-b-0 md:hidden safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav border-t border-b-0 sidebar:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {mainNavItems.map((item) => {
             const isActive = pathname === item.href;

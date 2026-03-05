@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { TransactionWithDetails, AccountWithBalance, Category } from '@financer/shared';
+import { TransactionWithDetails, AccountWithBalance, Category, SharedAccountInfo } from '@financer/shared';
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
 import { RecurringQuickModal } from '@/components/RecurringQuickModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function TransactionsPage() {
   const { t, numberLocale } = useTranslation();
@@ -15,12 +16,14 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [saveError, setSaveError] = useState('');
   const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const autofillCategoryRef = useRef<string | null>(null); // tracks auto-filled categoryId
   // Form state
   const [formData, setFormData] = useState({
@@ -50,14 +53,38 @@ export default function TransactionsPage() {
 
   async function loadData() {
     try {
-      const [txs, accs, cats] = await Promise.all([
+      const [txs, accs, cats, sas] = await Promise.all([
         api.getTransactions(),
         api.getAccounts(),
         api.getCategories(),
+        api.getSharedAccounts(),
       ]);
-      setTransactions(txs);
+
       setAccounts(accs);
       setCategories(cats);
+      setSharedAccounts(sas);
+
+      // For shared accounts where the current user is a member (not owner),
+      // transactions are stored in the owner's DB and won't appear in the regular list.
+      // Load them separately and merge in.
+      const memberSharedAccounts = sas.filter(sa => !sa.isOwner);
+      let allTxs = txs;
+      if (memberSharedAccounts.length > 0) {
+        const sharedTxArrays = await Promise.all(
+          memberSharedAccounts.map(sa =>
+            api.getSharedAccountTransactions(sa.uuid)
+              .then(list => list.map(tx => ({ ...tx, sharedUuid: sa.uuid })))
+              .catch(() => [])
+          )
+        );
+        const sharedTxs = sharedTxArrays.flat();
+        // Merge and sort by date descending
+        allTxs = [...txs, ...sharedTxs].sort((a, b) =>
+          b.date.localeCompare(a.date) || b.id - a.id
+        );
+      }
+
+      setTransactions(allTxs);
 
       // Set default account (prefer isDefault, fallback to first)
       if (accs.length > 0 && !formData.accountId) {
@@ -86,8 +113,13 @@ export default function TransactionsPage() {
   }
 
   function handleEdit(tx: TransactionWithDetails) {
+    // tx.sharedUuid is set for member-loaded transactions (owner's DB);
+    // fall back to checking the account's sharedUuid for owner transactions
+    const txAccount = accounts.find(a => a.id === tx.accountId);
+    const resolvedSharedUuid = tx.sharedUuid ?? (txAccount?.sharedUuid ? txAccount.sharedUuid : null);
+    const accountId = resolvedSharedUuid ? `shared:${resolvedSharedUuid}` : String(tx.accountId);
     setFormData({
-      accountId: String(tx.accountId),
+      accountId,
       categoryId: tx.categoryId ? String(tx.categoryId) : '',
       amount: String(tx.amount),
       type: tx.type,
@@ -103,19 +135,35 @@ export default function TransactionsPage() {
     setSaveError('');
 
     try {
-      const payload = {
-        accountId: Number(formData.accountId),
-        categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
-        amount: Number(formData.amount),
-        type: formData.type,
-        description: formData.description || undefined,
-        date: formData.date,
-      };
-
-      if (editingId) {
-        await api.updateTransaction(editingId, payload);
+      const sharedPrefix = 'shared:';
+      if (formData.accountId.startsWith(sharedPrefix)) {
+        const uuid = formData.accountId.slice(sharedPrefix.length);
+        const txData = {
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type as 'income' | 'expense',
+          description: formData.description || undefined,
+          date: formData.date,
+        };
+        if (editingId) {
+          await api.updateSharedTransaction(uuid, editingId, txData);
+        } else {
+          await api.addSharedTransaction(uuid, txData);
+        }
       } else {
-        await api.createTransaction(payload);
+        const payload = {
+          accountId: Number(formData.accountId),
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type,
+          description: formData.description || undefined,
+          date: formData.date,
+        };
+        if (editingId) {
+          await api.updateTransaction(editingId, payload);
+        } else {
+          await api.createTransaction(payload);
+        }
       }
 
       resetForm();
@@ -132,6 +180,17 @@ export default function TransactionsPage() {
   async function handleSubmitAndContinue() {
     setSaveError('');
     try {
+      const sharedPrefix = 'shared:';
+      if (formData.accountId.startsWith(sharedPrefix)) {
+        const uuid = formData.accountId.slice(sharedPrefix.length);
+        await api.addSharedTransaction(uuid, {
+          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          amount: Number(formData.amount),
+          type: formData.type as 'income' | 'expense',
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      } else {
       const payload = {
         accountId: Number(formData.accountId),
         categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
@@ -141,16 +200,17 @@ export default function TransactionsPage() {
         date: formData.date,
       };
       await api.createTransaction(payload);
-      // Keep form open — reset only amount, description, category
-      setFormData(prev => ({
-        ...prev,
-        categoryId: '',
-        amount: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-      }));
-      loadData();
-    } catch (error) {
+    }
+    // Keep form open — reset only amount, description, category
+    setFormData(prev => ({
+      ...prev,
+      categoryId: '',
+      amount: '',
+      description: '',
+      date: new Date().toISOString().split('T')[0],
+    }));
+    loadData();
+  } catch (error) {
       if (isTrialExpiredError(error)) {
         setSaveError(t('trialExpiredWriteBlocked'));
       } else {
@@ -159,19 +219,19 @@ export default function TransactionsPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('transactionsConfirmDelete'))) return;
-
-    try {
-      await api.deleteTransaction(id);
-      loadData();
-    } catch (error) {
-      if (isTrialExpiredError(error)) {
-        setSaveError(t('trialExpiredWriteBlocked'));
-      } else {
-        setSaveError(t('errorDeleting'));
-      }
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('transactionsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteTransaction(id);
+          loadData();
+        } catch (error) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleCreateCategoryFromDesc(name: string) {
@@ -241,6 +301,24 @@ export default function TransactionsPage() {
 
   const hierarchicalCategories = getHierarchicalCategories();
 
+  // Accounts that belong to a shared account owned by this user — shown in "Geteilte Konten" group only
+  const sharedOwnedAccountIds = new Set(
+    sharedAccounts.filter(sa => sa.isOwner).map(sa => Number(sa.accountId))
+  );
+  const regularAccounts = accounts.filter(a => !sharedOwnedAccountIds.has(Number(a.id)));
+
+  function translateDesc(desc: string | undefined): string | undefined {
+    if (!desc) return desc;
+    if (desc === 'Eigenanteil / Own share' || desc === 'Eigenanteil') return t('sharedAccountsEigenanteil');
+    if (desc.startsWith('Eigenanteil / Own share: ')) return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil / Own share: '.length);
+    if (desc.startsWith('Eigenanteil: ')) return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil: '.length);
+    if (desc.startsWith('Schuldenausgleich / Settlement')) {
+      const match = desc.match(/\(([^)]+)\)$/);
+      return match ? `${t('sharedAccountsSettlement')} (${match[1]})` : t('sharedAccountsSettlement');
+    }
+    return desc;
+  }
+
   // Filter transactions by search term
   const filteredTransactions = transactions.filter(tx => {
     if (!searchTerm) return true;
@@ -254,6 +332,15 @@ export default function TransactionsPage() {
 
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('transactionsTitle')}</h1>
@@ -368,11 +455,24 @@ export default function TransactionsPage() {
                     required
                   >
                     <option value="">{t('txSelectAccount')}</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </option>
-                    ))}
+                    {sharedAccounts.length > 0 ? (
+                      <>
+                        <optgroup label={t('txOwnAccountGroup')}>
+                          {regularAccounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={t('txSharedAccountGroup')}>
+                          {sharedAccounts.map((sa) => (
+                            <option key={sa.uuid} value={`shared:${sa.uuid}`}>{sa.accountName}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -549,7 +649,7 @@ export default function TransactionsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {tx.description || tx.categoryName || t('txTransaction')}
+                    {translateDesc(tx.description) || tx.categoryName || t('txTransaction')}
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
                     {tx.accountName} • {formatDate(tx.date, numberLocale)}

@@ -5,6 +5,7 @@ import { AccountWithBalance, AccountType, CreateAccountRequest } from '@financer
 import { api, isTrialExpiredError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function AccountsPage() {
   const { t, numberLocale } = useTranslation();
@@ -20,6 +21,8 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -107,32 +110,85 @@ export default function AccountsPage() {
       loadAccounts();
     } catch (error: unknown) {
       if (isTrialExpiredError(error)) {
-        alert(t('trialExpiredWriteBlocked'));
+        setSaveError(t('trialExpiredWriteBlocked'));
       } else {
-        alert(error instanceof Error ? error.message : t('errorSaving'));
+        setSaveError(error instanceof Error ? error.message : t('errorSaving'));
       }
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm(t('accountsConfirmDelete'))) return;
-
-    try {
-      await api.deleteAccount(id);
-      loadAccounts();
-    } catch (error: unknown) {
-      if (isTrialExpiredError(error)) {
-        alert(t('trialExpiredWriteBlocked'));
-      } else {
-        alert(error instanceof Error ? error.message : t('accountsDeleteFailed'));
-      }
-    }
+  function handleDelete(id: number) {
+    setConfirmDialog({
+      message: t('accountsConfirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteAccount(id);
+          loadAccounts();
+        } catch (error: unknown) {
+          if (isTrialExpiredError(error)) {
+            setSaveError(t('trialExpiredWriteBlocked'));
+            return;
+          }
+          const msg = error instanceof Error ? error.message : '';
+          if (msg.includes('Transaktionen vorhanden')) {
+            // Second confirmation: force-delete with all transactions
+            setConfirmDialog({
+              message: t('accountsConfirmDeleteForce'),
+              onConfirm: async () => {
+                setConfirmDialog(null);
+                try {
+                  await api.deleteAccount(id, true);
+                  loadAccounts();
+                } catch (e: unknown) {
+                  setSaveError(e instanceof Error ? e.message : t('accountsDeleteFailed'));
+                }
+              },
+            });
+          } else {
+            setSaveError(msg || t('accountsDeleteFailed'));
+          }
+        }
+      },
+    });
   }
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
+  function AccountTypeIcon({ type, className = 'w-5 h-5' }: { type: string; className?: string }) {
+    if (type === 'cash') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    );
+    if (type === 'credit') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    );
+    if (type === 'savings') return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    );
+  }
+
   return (
     <>
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={t('yes')}
+          cancelLabel={t('cancel')}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -151,6 +207,13 @@ export default function AccountsPage() {
             {showForm ? t('cancel') : t('accountsNewAccount')}
           </button>
         </div>
+
+        {saveError && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm flex justify-between">
+            {saveError}
+            <button onClick={() => setSaveError('')} className="ml-2 opacity-60 hover:opacity-100">×</button>
+          </div>
+        )}
 
         {/* Form */}
         {showForm && (
@@ -300,12 +363,21 @@ export default function AccountsPage() {
             {accounts.map((account) => (
               <div key={account.id} className="glass-card p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 text-muted-foreground flex-shrink-0">
+                      <AccountTypeIcon type={account.type} className="w-5 h-5" />
+                    </div>
+                    <div>
                     <h3 className="font-semibold flex items-center gap-2">
                       {account.name}
                       {account.isDefault && (
                         <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                           {t('accountsDefault')}
+                        </span>
+                      )}
+                      {account.sharedUuid && (
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                          {t('sharedAccountsShared')}
                         </span>
                       )}
                     </h3>
@@ -323,13 +395,14 @@ export default function AccountsPage() {
                         )}
                       </p>
                     )}
+                    </div>
                   </div>
                   <span className={`text-xl font-bold ${account.balance >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(account.balance, undefined, numberLocale)}
                   </span>
                 </div>
 
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                   <button
                     onClick={() => handleEdit(account)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"

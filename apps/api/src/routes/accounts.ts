@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { db } from '../db/index.js';
+import { db, tenantStorage } from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { CreateAccountSchema, UpdateAccountSchema } from '../lib/schemas.js';
+import {
+  createSharedAccount,
+  getSharedAccountByOwnerAndAccountId,
+  deleteSharedAccount,
+} from '../db/registry.js';
 import type { AccountWithBalance, CreateAccountRequest } from '@financer/shared';
 
 // DB Row type (snake_case from SQLite)
@@ -20,6 +25,7 @@ interface AccountRow {
   payment_day: number | null;
   linked_account_id: number | null;
   linked_account_name?: string | null;
+  shared_uuid: string | null;
   created_at: string;
   updated_at: string;
   balance: number;
@@ -68,6 +74,7 @@ accountsRouter.get('/', (_req, res) => {
     paymentDay: a.payment_day ?? undefined,
     linkedAccountId: a.linked_account_id ?? undefined,
     linkedAccountName: a.linked_account_name ?? undefined,
+    sharedUuid: a.shared_uuid ?? undefined,
     createdAt: a.created_at,
     updatedAt: a.updated_at,
     balance: a.balance,
@@ -241,9 +248,62 @@ accountsRouter.put('/:id', validate(UpdateAccountSchema), (req, res, next) => {
   }
 });
 
+// Share account (Cloud only - creates shared account entry in registry)
+accountsRouter.post('/:id/share', (req, res) => {
+  const tenant = tenantStorage.getStore();
+  if (!tenant) {
+    res.status(500).json({ success: false, error: 'No tenant context' });
+    return;
+  }
+
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) as any;
+  if (!existing) {
+    res.status(404).json({ success: false, error: 'Konto nicht gefunden' });
+    return;
+  }
+
+  // Check if already shared
+  if (existing.shared_uuid) {
+    res.json({ success: true, data: { uuid: existing.shared_uuid, alreadyShared: true } });
+    return;
+  }
+
+  const mode: 'joint' | 'pool' = req.body?.mode === 'pool' ? 'pool' : 'joint';
+  const uuid = createSharedAccount(tenant, Number(id), mode);
+  db.prepare('UPDATE accounts SET shared_uuid = ? WHERE id = ?').run(uuid, id);
+
+  res.json({ success: true, data: { uuid } });
+});
+
+// Unshare account (stop sharing)
+accountsRouter.delete('/:id/share', (req, res) => {
+  const tenant = tenantStorage.getStore();
+  if (!tenant) {
+    res.status(500).json({ success: false, error: 'No tenant context' });
+    return;
+  }
+
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) as any;
+  if (!existing || !existing.shared_uuid) {
+    res.status(404).json({ success: false, error: 'Konto ist nicht geteilt' });
+    return;
+  }
+
+  const sa = getSharedAccountByOwnerAndAccountId(tenant, Number(id));
+  if (sa) {
+    deleteSharedAccount(sa.uuid);
+  }
+  db.prepare('UPDATE accounts SET shared_uuid = NULL WHERE id = ?').run(id);
+
+  res.json({ success: true, data: { success: true } });
+});
+
 // Delete account
 accountsRouter.delete('/:id', (req, res) => {
   const { id } = req.params;
+  const force = req.query.force === 'true';
 
   const existing = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
   if (!existing) {
@@ -256,12 +316,55 @@ accountsRouter.delete('/:id', (req, res) => {
     'SELECT COUNT(*) as count FROM transactions WHERE account_id = ? OR transfer_to_account_id = ?'
   ).get(id, id) as { count: number };
 
-  if (transactionCount.count > 0) {
+  if (transactionCount.count > 0 && !force) {
     res.status(400).json({
       success: false,
       error: 'Konto kann nicht gelöscht werden, da noch Transaktionen vorhanden sind',
+      data: { transactionCount: transactionCount.count },
     });
     return;
+  }
+
+  if (force) {
+    const accountName = (existing as any).name as string;
+
+    // Handle transfer transactions: preserve them on the other account instead of deleting
+    const transfers = db.prepare(
+      `SELECT * FROM transactions WHERE (account_id = ? OR transfer_to_account_id = ?) AND type = 'transfer'`
+    ).all(id, id) as any[];
+
+    for (const tx of transfers) {
+      if (String(tx.account_id) === String(id)) {
+        // This account was the SOURCE → convert to income on the destination account
+        const desc = tx.description
+          ? `${tx.description} [${accountName}]`
+          : `Umbuchung von / Transfer from: ${accountName}`;
+        db.prepare(
+          `UPDATE transactions SET type = 'income', transfer_to_account_id = NULL, description = ? WHERE id = ?`
+        ).run(desc, tx.id);
+      } else {
+        // This account was the DESTINATION → convert to expense on the source account
+        const desc = tx.description
+          ? `${tx.description} [${accountName}]`
+          : `Umbuchung nach / Transfer to: ${accountName}`;
+        db.prepare(
+          `UPDATE transactions SET type = 'expense', transfer_to_account_id = NULL, description = ? WHERE id = ?`
+        ).run(desc, tx.id);
+      }
+    }
+
+    // Delete only non-transfer transactions directly on this account
+    db.prepare(`DELETE FROM transactions WHERE account_id = ? AND type != 'transfer'`).run(id);
+  }
+
+  // Auto-stop sharing if this account was shared
+  const accountRow = existing as { shared_uuid?: string | null };
+  if (accountRow?.shared_uuid) {
+    const tenant = tenantStorage.getStore();
+    if (tenant) {
+      const sa = getSharedAccountByOwnerAndAccountId(tenant, Number(id));
+      if (sa) deleteSharedAccount(sa.uuid);
+    }
   }
 
   db.prepare('DELETE FROM accounts WHERE id = ?').run(id);

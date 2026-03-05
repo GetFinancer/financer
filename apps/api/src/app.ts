@@ -11,6 +11,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { recurringRouter } from './routes/recurring.js';
 import { creditCardsRouter } from './routes/credit-cards.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { sharedAccountsRouter } from './routes/shared-accounts.js';
 import { registerRouter } from './routes/register.js';
 import { tenantRouter } from './routes/tenant.js';
 import { billingRouter, billingWebhookHandler } from './routes/billing.js';
@@ -145,6 +146,9 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
   app.use('/api/recurring', recurringRouter);
   app.use('/api/credit-cards', creditCardsRouter);
   app.use('/api/analytics', analyticsRouter);
+  if (isCloudhost) {
+    app.use('/api/shared-accounts', sharedAccountsRouter);
+  }
 
   // Error handler
   app.use(errorHandler);

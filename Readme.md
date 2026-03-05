@@ -29,6 +29,7 @@ A self or cloud-hosted Progressive Web App (PWA) for personal finance management
 - Mobile-friendly PWA (installable on phone)
 - Offline-capable
 - Docker deployment ready
+- Shared accounts (Cloud Only)
 
 
 ### Links

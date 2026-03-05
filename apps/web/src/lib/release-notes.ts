@@ -13,6 +13,50 @@ export interface VersionNotes {
 
 export const releaseNotes: VersionNotes[] = [
   {
+    version: '1.6.0',
+    date: '2026-03',
+    new: [
+      {
+        de: 'Geteilte Konten — Konten mit anderen Financer-Nutzern teilen und gemeinsam verwalten (nur Cloud)',
+        en: 'Shared Accounts — share and manage accounts together with other Financer users (Cloud only)',
+      },
+      {
+        de: 'Zwei Kontoarten: Gemeinsames Konto (Joint Account) und Ausgaben-Pool (Expense Pool)',
+        en: 'Two account types: Joint Account and Expense Pool',
+      },
+      {
+        de: 'Einladungssystem per Link (48 h gültig, einmalig verwendbar)',
+        en: 'Invite system via link (valid 48 h, single-use)',
+      },
+      {
+        de: 'Ausgaben aufteilen: Jede Ausgabe wird automatisch anteilig aufgeteilt und als Eigenanteil verbucht',
+        en: 'Expense splitting: each expense is automatically split and booked as an own share',
+      },
+      {
+        de: 'Übersicht "Schulde ich" / "Schuldet mir" direkt auf der Geteilte-Konten-Seite',
+        en: '"I owe" / "They owe me" overview directly on the Shared Accounts page',
+      },
+      {
+        de: 'Aufschlüsselung: Aufklappbare Quellliste zeigt wie sich jede Schuld zusammensetzt',
+        en: 'Breakdown: expandable source list shows how each debt is composed',
+      },
+      {
+        de: 'Schulden begleichen mit automatischer gegenseitiger Verrechnung (Cross-Pool-Netting)',
+        en: 'Settle up with automatic mutual netting across all shared accounts',
+      },
+      {
+        de: 'Konto-Details mit Tabs: Alle / Von mir / Von [Name]',
+        en: 'Account details with tabs: All / By me / By [Name]',
+      },
+    ],
+    improved: [
+      {
+        de: 'Kontolöschung: Umbuchungen bleiben auf dem verbleibenden Konto erhalten und werden als Einnahme oder Ausgabe umgewandelt',
+        en: 'Account deletion: transfers are preserved on the remaining account and converted to income or expense',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-03',
     new: [
