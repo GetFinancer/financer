@@ -153,7 +153,7 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Password security warning banner */}
         {showPasswordWarning && (
-          <div className={`fixed top-16 left-0 right-0 z-30 transition-all duration-300 ${sidebarOpen ? 'md:left-64' : 'md:left-16'}`}>
+          <div className={`fixed top-16 left-0 right-0 z-30 transition-all duration-300 ${sidebarOpen ? 'sidebar:left-64' : 'sidebar:left-16'}`}>
             <PasswordWarningBanner onDismiss={() => setShowPasswordWarning(false)} />
           </div>
         )}
@@ -163,9 +163,9 @@ export function AppShell({ children }: AppShellProps) {
           className={`
             transition-all duration-300
             px-4 py-6 pb-24
-            md:pb-8 md:px-6 lg:px-8
-            md:pt-24
-            ${sidebarOpen ? 'md:pl-72' : 'md:pl-24'}
+            sidebar:pb-8 sidebar:px-6 sidebar:px-8
+            sidebar:pt-24
+            ${sidebarOpen ? 'sidebar:pl-72' : 'sidebar:pl-24'}
           `}
         >
           <div key={pathname} className="animate-page-in max-w-screen-xl mx-auto">

@@ -139,7 +139,7 @@ export function Sidebar({ isOpen, onToggle, tenantStatus }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col fixed left-0 top-0 h-full z-40 sidebar-bg transition-all duration-300',
+        'hidden sidebar:flex flex-col fixed left-0 top-0 h-full z-40 sidebar-bg transition-all duration-300',
         isOpen ? 'w-64' : 'w-16'
       )}
     >

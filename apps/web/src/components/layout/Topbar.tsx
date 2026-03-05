@@ -28,7 +28,7 @@ export function Topbar({ sidebarOpen }: TopbarProps) {
   return (
     <header
       className={cn(
-        'hidden md:flex fixed top-0 right-0 z-30 h-16 topbar-bg transition-all duration-300',
+        'hidden sidebar:flex fixed top-0 right-0 z-30 h-16 topbar-bg transition-all duration-300',
         sidebarOpen ? 'left-64' : 'left-16'
       )}
     >
