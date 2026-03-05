@@ -428,6 +428,7 @@ const de = {
   sharedAccountsInviteUnlimited: 'Kein Ablauf',
   sharedAccountsInviteNoExpiry: 'Kein Ablaufdatum',
   dashboardIncludeShared: 'Geteilte Konten einbeziehen',
+  txOwnAccountGroup: 'Konten',
   txSharedAccountGroup: 'Geteilte Konten',
   sharedAccountsInviteExpires: 'Gültig bis: {date}',
   sharedAccountsStopSharing: 'Teilen beenden',

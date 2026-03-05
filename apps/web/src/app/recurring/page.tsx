@@ -8,6 +8,7 @@ import type {
   RecurringTransactionWithDetails,
   Category,
   AccountWithBalance,
+  SharedAccountInfo,
   CreateRecurringTransactionRequest,
   RecurringFrequency,
   RecurringOccurrence,
@@ -33,6 +34,7 @@ export default function RecurringPage() {
   const [recurring, setRecurring] = useState<RecurringTransactionWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -99,14 +101,16 @@ export default function RecurringPage() {
 
   async function loadData() {
     try {
-      const [recurringData, categoriesData, accountsData] = await Promise.all([
+      const [recurringData, categoriesData, accountsData, sharedData] = await Promise.all([
         api.getRecurringTransactions(),
         api.getCategories(),
         api.getAccounts(),
+        api.getSharedAccounts().catch(() => [] as SharedAccountInfo[]),
       ]);
       setRecurring(recurringData);
       setCategories(categoriesData);
       setAccounts(accountsData);
+      setSharedAccounts(sharedData);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -411,11 +415,24 @@ export default function RecurringPage() {
                     className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">{t('recurringNoAccount')}</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </option>
-                    ))}
+                    {sharedAccounts.length > 0 ? (
+                      <>
+                        <optgroup label={t('txOwnAccountGroup')}>
+                          {accounts.filter(a => !a.sharedUuid).map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={t('txSharedAccountGroup')}>
+                          {sharedAccounts.map((sa) => (
+                            <option key={sa.uuid} value={sa.accountId}>{sa.accountName}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 

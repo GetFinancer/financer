@@ -404,19 +404,23 @@ export default function TransactionsPage() {
                     required
                   >
                     <option value="">{t('txSelectAccount')}</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </option>
-                    ))}
-                    {sharedAccounts.length > 0 && (
-                      <optgroup label={t('txSharedAccountGroup')}>
-                        {sharedAccounts.map((sa) => (
-                          <option key={sa.uuid} value={`shared:${sa.uuid}`}>
-                            {sa.accountName}
-                          </option>
-                        ))}
-                      </optgroup>
+                    {sharedAccounts.length > 0 ? (
+                      <>
+                        <optgroup label={t('txOwnAccountGroup')}>
+                          {accounts.filter(a => !a.sharedUuid).map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={t('txSharedAccountGroup')}>
+                          {sharedAccounts.map((sa) => (
+                            <option key={sa.uuid} value={`shared:${sa.uuid}`}>{sa.accountName}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))
                     )}
                   </select>
                 </div>

@@ -488,6 +488,7 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsInviteUnlimited: 'No expiry',
   sharedAccountsInviteNoExpiry: 'No expiry date',
   dashboardIncludeShared: 'Include shared accounts',
+  txOwnAccountGroup: 'Accounts',
   txSharedAccountGroup: 'Shared Accounts',
 };
 
