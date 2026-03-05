@@ -452,6 +452,7 @@ export interface SharedAccountInvite {
 export interface SharedBalanceSource {
   description?: string;
   amount: number;
+  isOffset?: boolean; // true = counter-debt that reduces the net balance
 }
 
 export interface SharedBalance {

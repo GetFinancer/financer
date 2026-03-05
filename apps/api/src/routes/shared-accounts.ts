@@ -700,10 +700,18 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
       const iOweThem = rawDebts[tenant]?.[otherTenant] ?? 0;
       const net = Math.round((otherOwesMe - iOweThem) * 100) / 100;
       if (net === 0) continue;
-      // Sources: whose debt is larger determines which sources to show
-      const sources = net > 0
+      // Primary sources: the direction driving the net debt
+      // Offset sources: the counter-debts that reduced the gross amount
+      const primarySources = net > 0
         ? (rawSources[otherTenant]?.[tenant] ?? [])
         : (rawSources[tenant]?.[otherTenant] ?? []);
+      const offsetSources = net > 0
+        ? (rawSources[tenant]?.[otherTenant] ?? [])
+        : (rawSources[otherTenant]?.[tenant] ?? []);
+      const sources = [
+        ...primarySources.map(s => ({ ...s, isOffset: false })),
+        ...offsetSources.map(s => ({ ...s, isOffset: true })),
+      ];
       const member = sa.members.find(m => m.memberTenant === otherTenant);
       balances.push({ tenant: otherTenant, displayName: member?.displayName ?? null, owes: net, sources });
       totalUnsettled += Math.abs(net);
@@ -721,7 +729,9 @@ sharedAccountsRouter.get('/:uuid/balance', async (req, res) => {
   }
 });
 
-// POST /shared-accounts/:uuid/settle — settle up (create settlement transaction + mark splits settled)
+// POST /shared-accounts/:uuid/settle — settle up
+// Handles cross-pool netting: settles all mutual shares between debtor and creditor,
+// creating per-share income transactions so the pool balance reaches 0.
 sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
   try {
     const tenant = currentTenant();
@@ -734,37 +744,86 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
     }
 
     const sa = getSharedAccount(uuid)!;
-    const { amount, date, settlingTenant, fromAccountId, categoryId } = req.body;
+    const allMembers = [sa.ownerTenant, ...sa.members.map(m => m.memberTenant)];
+    const { amount, date, settlingTenant, creditorTenant, fromAccountId, categoryId } = req.body;
 
-    // Only owner or the settling tenant can call this
-    const targetTenant = settlingTenant ?? tenant;
+    const targetTenant = settlingTenant ?? tenant; // who is paying (the debtor)
     const settleDate = date ?? new Date().toISOString().slice(0, 10);
-    const settleAmount = amount ?? 0;
+    const netAmount = amount ?? 0;
 
-    await inOwnerDb(sa.ownerTenant, () => {
-      // Mark all split shares for this tenant as settled
-      const splitIds = db.prepare(`
-        SELECT ss.id FROM shared_splits ss WHERE ss.shared_uuid = ?
-      `).all(uuid) as { id: number }[];
-
-      for (const split of splitIds) {
-        db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, targetTenant);
+    // Find all shared accounts involving the same set of members (cross-pool netting)
+    const memberSharedUuids: Record<string, Set<string>> = {};
+    for (const m of allMembers) {
+      const s = new Set<string>();
+      getOwnerSharedAccounts(m).forEach(x => s.add(x.uuid));
+      getMemberSharedAccounts(m).forEach(x => s.add(x.uuid));
+      memberSharedUuids[m] = s;
+    }
+    const uuidCount: Record<string, number> = {};
+    for (const m of allMembers) {
+      for (const u of memberSharedUuids[m]) {
+        uuidCount[u] = (uuidCount[u] ?? 0) + 1;
       }
+    }
+    const relevantUuids = Object.keys(uuidCount).filter(u => uuidCount[u] >= 2);
 
-      // Create a settlement income transaction in the shared account
-      db.prepare(`
-        INSERT INTO transactions (account_id, amount, type, description, date, added_by)
-        VALUES (?, ?, 'income', ?, ?, ?)
-      `).run(
-        sa.accountId,
-        settleAmount,
-        `Schuldenausgleich / Settlement (${targetTenant})`,
-        settleDate,
-        tenant
-      );
-    });
+    // Settle all mutual shares across all related accounts and create per-share income txs
+    for (const sharedUuid of relevantUuids) {
+      const sharedAcct = getSharedAccount(sharedUuid);
+      if (!sharedAcct) continue;
 
-    // Optionally create expense on settling tenant's own account (Umbuchung)
+      await inOwnerDb(sharedAcct.ownerTenant, () => {
+        const splits = db.prepare(`
+          SELECT ss.id, COALESCE(t.added_by, ?) as payer
+          FROM shared_splits ss
+          JOIN transactions t ON ss.transaction_id = t.id
+          WHERE ss.shared_uuid = ?
+        `).all(sharedAcct.ownerTenant, sharedUuid) as { id: number; payer: string }[];
+
+        for (const split of splits) {
+          // Debtor (targetTenant) owes creditor: creditor is payer, debtor has unsettled share
+          if (creditorTenant && split.payer === creditorTenant) {
+            const share = db.prepare(
+              'SELECT amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
+            ).get(split.id, targetTenant) as { amount: number } | undefined;
+            if (share) {
+              db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, targetTenant);
+              db.prepare(`INSERT INTO transactions (account_id, amount, type, description, date, added_by)
+                VALUES (?, ?, 'income', ?, ?, ?)`)
+                .run(sharedAcct.accountId, share.amount, `Schuldenausgleich / Settlement (${targetTenant})`, settleDate, tenant);
+            }
+          }
+
+          // Mutual debt: creditor owes debtor (targetTenant is payer, creditor has unsettled share)
+          // These cancel out against the above, enabling netting
+          if (creditorTenant && split.payer === targetTenant) {
+            const share = db.prepare(
+              'SELECT amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
+            ).get(split.id, creditorTenant) as { amount: number } | undefined;
+            if (share) {
+              db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, creditorTenant);
+              db.prepare(`INSERT INTO transactions (account_id, amount, type, description, date, added_by)
+                VALUES (?, ?, 'income', ?, ?, ?)`)
+                .run(sharedAcct.accountId, share.amount, `Schuldenausgleich / Settlement (${creditorTenant})`, settleDate, tenant);
+            }
+          }
+
+          // Fallback (no creditorTenant): mark all targetTenant shares settled + one income
+          if (!creditorTenant) {
+            db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, targetTenant);
+          }
+        }
+
+        // Fallback income tx when creditorTenant not provided
+        if (!creditorTenant) {
+          db.prepare(`INSERT INTO transactions (account_id, amount, type, description, date, added_by)
+            VALUES (?, ?, 'income', ?, ?, ?)`)
+            .run(sharedAcct.accountId, netAmount, `Schuldenausgleich / Settlement (${targetTenant})`, settleDate, tenant);
+        }
+      });
+    }
+
+    // Create expense on settling tenant's personal account for the net amount
     if (fromAccountId) {
       await inOwnerDb(targetTenant, () => {
         db.prepare(`
@@ -772,7 +831,7 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
           VALUES (?, ?, 'expense', ?, ?, ?, ?)
         `).run(
           fromAccountId,
-          settleAmount,
+          netAmount,
           `Schuldenausgleich / Settlement`,
           settleDate,
           categoryId ?? null,

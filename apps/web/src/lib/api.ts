@@ -403,7 +403,7 @@ export const api = {
   getSharedBalance: (uuid: string) =>
     fetchApi<SharedBalanceResult>(`/shared-accounts/${uuid}/balance`),
 
-  settleUp: (uuid: string, amount: number, date: string, opts?: { settlingTenant?: string; fromAccountId?: number; categoryId?: number }) =>
+  settleUp: (uuid: string, amount: number, date: string, opts?: { settlingTenant?: string; creditorTenant?: string; fromAccountId?: number; categoryId?: number }) =>
     fetchApi<{ success: boolean }>(`/shared-accounts/${uuid}/settle`, {
       method: 'POST',
       body: JSON.stringify({ amount, date, ...opts }),

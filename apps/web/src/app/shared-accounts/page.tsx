@@ -243,13 +243,15 @@ export default function SharedAccountsPage() {
         Number(settleAmount),
         settleDate,
         {
+          creditorTenant: settleDialog.creditorTenant,
           fromAccountId: settleFromAccountId ? Number(settleFromAccountId) : undefined,
           categoryId: settleCategoryId ? Number(settleCategoryId) : undefined,
         }
       );
       setSettleDialog(null);
       loadSharedAccounts();
-    } catch {
+    } catch (err: any) {
+      alert(err?.message ?? 'Fehler beim Begleichen / Error settling');
     } finally {
       setSettling(false);
     }
@@ -576,10 +578,16 @@ export default function SharedAccountsPage() {
                               </div>
                               {isExpanded && hasSources && (
                                 <div className="mt-2 space-y-1">
-                                  {entry.sources.map((s, i) => (
+                                  {entry.sources.filter(s => !s.isOffset).map((s, i) => (
                                     <div key={i} className="flex items-center justify-between text-xs text-muted-foreground pl-2 border-l border-border">
                                       <span>{s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span>{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-expense">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                    </div>
+                                  ))}
+                                  {entry.sources.filter(s => s.isOffset).map((s, i) => (
+                                    <div key={`off-${i}`} className="flex items-center justify-between text-xs text-muted-foreground/60 pl-2 border-l border-border/40 italic">
+                                      <span>− {s.description ? translateDesc(s.description) : '—'}</span>
+                                      <span className="text-income">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -646,10 +654,16 @@ export default function SharedAccountsPage() {
                               </div>
                               {isExpanded && hasSources && (
                                 <div className="mt-2 space-y-1">
-                                  {entry.sources.map((s, i) => (
+                                  {entry.sources.filter(s => !s.isOffset).map((s, i) => (
                                     <div key={i} className="flex items-center justify-between text-xs text-muted-foreground pl-2 border-l border-border">
                                       <span>{s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span>{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-income">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                    </div>
+                                  ))}
+                                  {entry.sources.filter(s => s.isOffset).map((s, i) => (
+                                    <div key={`off-${i}`} className="flex items-center justify-between text-xs text-muted-foreground/60 pl-2 border-l border-border/40 italic">
+                                      <span>− {s.description ? translateDesc(s.description) : '—'}</span>
+                                      <span className="text-expense">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                 </div>
