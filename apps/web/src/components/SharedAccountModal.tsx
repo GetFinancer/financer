@@ -225,6 +225,9 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   // Translate system-generated description prefixes to the active locale
   function translateDesc(desc: string | undefined): string | undefined {
     if (!desc) return desc;
+    if (desc === 'Eigenanteil / Own share' || desc === 'Eigenanteil') {
+      return t('sharedAccountsEigenanteil');
+    }
     if (desc.startsWith('Eigenanteil / Own share: ')) {
       return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil / Own share: '.length);
     }

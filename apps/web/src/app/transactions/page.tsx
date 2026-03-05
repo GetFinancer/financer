@@ -301,6 +301,24 @@ export default function TransactionsPage() {
 
   const hierarchicalCategories = getHierarchicalCategories();
 
+  // Accounts that belong to a shared account owned by this user — shown in "Geteilte Konten" group only
+  const sharedOwnedAccountIds = new Set(
+    sharedAccounts.filter(sa => sa.isOwner).map(sa => Number(sa.accountId))
+  );
+  const regularAccounts = accounts.filter(a => !sharedOwnedAccountIds.has(Number(a.id)));
+
+  function translateDesc(desc: string | undefined): string | undefined {
+    if (!desc) return desc;
+    if (desc === 'Eigenanteil / Own share' || desc === 'Eigenanteil') return t('sharedAccountsEigenanteil');
+    if (desc.startsWith('Eigenanteil / Own share: ')) return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil / Own share: '.length);
+    if (desc.startsWith('Eigenanteil: ')) return t('sharedAccountsEigenanteil') + ': ' + desc.slice('Eigenanteil: '.length);
+    if (desc.startsWith('Schuldenausgleich / Settlement')) {
+      const match = desc.match(/\(([^)]+)\)$/);
+      return match ? `${t('sharedAccountsSettlement')} (${match[1]})` : t('sharedAccountsSettlement');
+    }
+    return desc;
+  }
+
   // Filter transactions by search term
   const filteredTransactions = transactions.filter(tx => {
     if (!searchTerm) return true;
@@ -440,12 +458,9 @@ export default function TransactionsPage() {
                     {sharedAccounts.length > 0 ? (
                       <>
                         <optgroup label={t('txOwnAccountGroup')}>
-                          {(() => {
-                            const sharedAccountIds = new Set(sharedAccounts.filter(sa => sa.isOwner).map(sa => sa.accountId));
-                            return accounts.filter(a => !sharedAccountIds.has(a.id)).map((acc) => (
-                              <option key={acc.id} value={acc.id}>{acc.name}</option>
-                            ));
-                          })()}
+                          {regularAccounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
                         </optgroup>
                         <optgroup label={t('txSharedAccountGroup')}>
                           {sharedAccounts.map((sa) => (
@@ -634,7 +649,7 @@ export default function TransactionsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {tx.description || tx.categoryName || t('txTransaction')}
+                    {translateDesc(tx.description) || tx.categoryName || t('txTransaction')}
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
                     {tx.accountName} • {formatDate(tx.date, numberLocale)}
