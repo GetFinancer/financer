@@ -87,14 +87,21 @@ export default function SharedAccountsPage() {
 
   async function loadBalances(accounts: SharedAccountInfo[]) {
     const entries: DebtEntry[] = [];
-    await Promise.all(accounts.map(async sa => {
+    // The backend already nets balances across all related shared accounts.
+    // Querying multiple accounts with overlapping members would duplicate results,
+    // so we skip any creditor tenant we've already seen from a prior call.
+    const seenCreditors = new Set<string>();
+    for (const sa of accounts) {
       try {
         const bal: SharedBalanceResult = await api.getSharedBalance(sa.uuid);
         for (const b of bal.balances) {
-          entries.push({ account: sa, tenant: b.tenant, displayName: b.displayName, owes: b.owes, sources: b.sources ?? [] });
+          if (!seenCreditors.has(b.tenant)) {
+            seenCreditors.add(b.tenant);
+            entries.push({ account: sa, tenant: b.tenant, displayName: b.displayName, owes: b.owes, sources: b.sources ?? [] });
+          }
         }
       } catch {}
-    }));
+    }
     setDebtEntries(entries);
   }
 
