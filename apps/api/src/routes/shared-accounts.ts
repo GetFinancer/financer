@@ -510,6 +510,13 @@ sharedAccountsRouter.post('/:uuid/transactions/:txId/split', async (req, res) =>
           db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, t, amount);
         }
       }
+
+      // Auto-settle payer's own share (they already paid)
+      const payer = tx.added_by ?? sa.ownerTenant;
+      if (allMembers.includes(payer)) {
+        db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?')
+          .run(splitId, payer);
+      }
     });
 
     res.json({ success: true, data: { success: true } });
@@ -670,10 +677,12 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
     }
 
     const sa = getSharedAccount(uuid)!;
-    const { amount, date, settlingTenant } = req.body;
+    const { amount, date, settlingTenant, fromAccountId, categoryId } = req.body;
 
     // Only owner or the settling tenant can call this
     const targetTenant = settlingTenant ?? tenant;
+    const settleDate = date ?? new Date().toISOString().slice(0, 10);
+    const settleAmount = amount ?? 0;
 
     await inOwnerDb(sa.ownerTenant, () => {
       // Mark all split shares for this tenant as settled
@@ -685,18 +694,35 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
         db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, targetTenant);
       }
 
-      // Create a settlement income transaction in the account
+      // Create a settlement income transaction in the shared account
       db.prepare(`
         INSERT INTO transactions (account_id, amount, type, description, date, added_by)
         VALUES (?, ?, 'income', ?, ?, ?)
       `).run(
         sa.accountId,
-        amount ?? 0,
+        settleAmount,
         `Schuldenausgleich / Settlement (${targetTenant})`,
-        date ?? new Date().toISOString().slice(0, 10),
+        settleDate,
         tenant
       );
     });
+
+    // Optionally create expense on settling tenant's own account (Umbuchung)
+    if (fromAccountId) {
+      await inOwnerDb(targetTenant, () => {
+        db.prepare(`
+          INSERT INTO transactions (account_id, amount, type, description, date, category_id, added_by)
+          VALUES (?, ?, 'expense', ?, ?, ?, ?)
+        `).run(
+          fromAccountId,
+          settleAmount,
+          `Schuldenausgleich / Settlement`,
+          settleDate,
+          categoryId ?? null,
+          targetTenant
+        );
+      });
+    }
 
     res.json({ success: true, data: { success: true } });
   } catch (err) {
