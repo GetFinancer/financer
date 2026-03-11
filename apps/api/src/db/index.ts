@@ -274,9 +274,11 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS recurring_transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      account_id INTEGER REFERENCES accounts(id),
       category_id INTEGER REFERENCES categories(id),
+      transfer_to_account_id INTEGER REFERENCES accounts(id),
       amount REAL NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+      type TEXT NOT NULL CHECK(type IN ('income', 'expense', 'transfer')),
       frequency TEXT NOT NULL CHECK(frequency IN ('daily', 'weekly', 'monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly')),
       day_of_week INTEGER CHECK(day_of_week >= 0 AND day_of_week <= 6),
       day_of_month INTEGER CHECK(day_of_month >= 1 AND day_of_month <= 31),
@@ -329,6 +331,35 @@ function initSchema() {
   // Migrations
   try { db.exec(`ALTER TABLE accounts ADD COLUMN include_in_budget INTEGER DEFAULT 1`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE recurring_transactions ADD COLUMN account_id INTEGER REFERENCES accounts(id)`); } catch (e) { /* exists */ }
+  // v1.7.0: Transfer-Daueraufträge — recreate table to update CHECK constraint + add transfer_to_account_id
+  try {
+    db.prepare('SELECT transfer_to_account_id FROM recurring_transactions LIMIT 1').get();
+  } catch (e) {
+    db.exec(`
+      CREATE TABLE recurring_transactions_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        account_id INTEGER REFERENCES accounts(id),
+        category_id INTEGER REFERENCES categories(id),
+        transfer_to_account_id INTEGER REFERENCES accounts(id),
+        amount REAL NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('income', 'expense', 'transfer')),
+        frequency TEXT NOT NULL CHECK(frequency IN ('daily', 'weekly', 'monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly')),
+        day_of_week INTEGER CHECK(day_of_week >= 0 AND day_of_week <= 6),
+        day_of_month INTEGER CHECK(day_of_month >= 1 AND day_of_month <= 31),
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO recurring_transactions_v2
+        SELECT id, name, account_id, category_id, NULL, amount, type, frequency, day_of_week, day_of_month, start_date, end_date, active, created_at, updated_at
+        FROM recurring_transactions;
+      DROP TABLE recurring_transactions;
+      ALTER TABLE recurring_transactions_v2 RENAME TO recurring_transactions;
+    `);
+  }
   try { db.exec(`ALTER TABLE accounts ADD COLUMN billing_day INTEGER`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE accounts ADD COLUMN payment_day INTEGER`); } catch (e) { /* exists */ }
   try { db.exec(`ALTER TABLE accounts ADD COLUMN linked_account_id INTEGER REFERENCES accounts(id)`); } catch (e) { /* exists */ }

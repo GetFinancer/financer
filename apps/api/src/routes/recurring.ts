@@ -30,10 +30,12 @@ recurringRouter.get('/', (req, res) => {
       r.*,
       a.name as account_name,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      ta.name as transfer_to_account_name
     FROM recurring_transactions r
     LEFT JOIN accounts a ON r.account_id = a.id
     LEFT JOIN categories c ON r.category_id = c.id
+    LEFT JOIN accounts ta ON r.transfer_to_account_id = ta.id
     ORDER BY r.name ASC
   `).all() as any[];
 
@@ -42,6 +44,7 @@ recurringRouter.get('/', (req, res) => {
     name: r.name,
     accountId: r.account_id ?? undefined,
     categoryId: r.category_id ?? undefined,
+    transferToAccountId: r.transfer_to_account_id ?? undefined,
     amount: r.amount,
     type: r.type,
     frequency: r.frequency,
@@ -55,6 +58,7 @@ recurringRouter.get('/', (req, res) => {
     accountName: r.account_name ?? undefined,
     categoryName: r.category_name ?? undefined,
     categoryColor: r.category_color ?? undefined,
+    transferToAccountName: r.transfer_to_account_name ?? undefined,
   }));
 
   res.json({ success: true, data: mapped });
@@ -69,10 +73,12 @@ recurringRouter.get('/:id', (req, res) => {
       r.*,
       a.name as account_name,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      ta.name as transfer_to_account_name
     FROM recurring_transactions r
     LEFT JOIN accounts a ON r.account_id = a.id
     LEFT JOIN categories c ON r.category_id = c.id
+    LEFT JOIN accounts ta ON r.transfer_to_account_id = ta.id
     WHERE r.id = ?
   `).get(id) as any;
 
@@ -86,6 +92,7 @@ recurringRouter.get('/:id', (req, res) => {
     name: recurring.name,
     accountId: recurring.account_id ?? undefined,
     categoryId: recurring.category_id ?? undefined,
+    transferToAccountId: recurring.transfer_to_account_id ?? undefined,
     amount: recurring.amount,
     type: recurring.type,
     frequency: recurring.frequency,
@@ -99,6 +106,7 @@ recurringRouter.get('/:id', (req, res) => {
     accountName: recurring.account_name ?? undefined,
     categoryName: recurring.category_name ?? undefined,
     categoryColor: recurring.category_color ?? undefined,
+    transferToAccountName: recurring.transfer_to_account_name ?? undefined,
   };
 
   res.json({ success: true, data: mapped });
@@ -110,6 +118,7 @@ recurringRouter.post('/', validate(CreateRecurringSchema), (req, res) => {
     name,
     accountId,
     categoryId,
+    transferToAccountId,
     amount,
     type,
     frequency,
@@ -118,6 +127,12 @@ recurringRouter.post('/', validate(CreateRecurringSchema), (req, res) => {
     startDate,
     endDate,
   } = req.body as CreateRecurringTransactionRequest;
+
+  // Validate transfer requires target account
+  if (type === 'transfer' && !transferToAccountId) {
+    res.status(400).json({ success: false, error: 'Zielkonto für Umbuchung erforderlich' });
+    return;
+  }
 
   // Validate day_of_week for weekly
   if (frequency === 'weekly' && (dayOfWeek === undefined || dayOfWeek < 0 || dayOfWeek > 6)) {
@@ -134,12 +149,13 @@ recurringRouter.post('/', validate(CreateRecurringSchema), (req, res) => {
   }
 
   const result = db.prepare(`
-    INSERT INTO recurring_transactions (name, account_id, category_id, amount, type, frequency, day_of_week, day_of_month, start_date, end_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO recurring_transactions (name, account_id, category_id, transfer_to_account_id, amount, type, frequency, day_of_week, day_of_month, start_date, end_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name,
     accountId || null,
-    categoryId || null,
+    type === 'transfer' ? null : (categoryId || null),
+    type === 'transfer' ? (transferToAccountId || null) : null,
     Math.abs(amount),
     type,
     frequency,
@@ -161,6 +177,7 @@ recurringRouter.put('/:id', validate(UpdateRecurringSchema), (req, res) => {
     name,
     accountId,
     categoryId,
+    transferToAccountId,
     amount,
     type,
     frequency,
@@ -171,17 +188,20 @@ recurringRouter.put('/:id', validate(UpdateRecurringSchema), (req, res) => {
     active,
   } = req.body;
 
-  const existing = db.prepare('SELECT * FROM recurring_transactions WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT * FROM recurring_transactions WHERE id = ?').get(id) as any;
   if (!existing) {
     res.status(404).json({ success: false, error: 'Wiederkehrende Transaktion nicht gefunden' });
     return;
   }
+
+  const effectiveType = type ?? existing.type;
 
   db.prepare(`
     UPDATE recurring_transactions
     SET name = COALESCE(?, name),
         account_id = ?,
         category_id = ?,
+        transfer_to_account_id = ?,
         amount = COALESCE(?, amount),
         type = COALESCE(?, type),
         frequency = COALESCE(?, frequency),
@@ -194,15 +214,16 @@ recurringRouter.put('/:id', validate(UpdateRecurringSchema), (req, res) => {
     WHERE id = ?
   `).run(
     name ?? null,
-    accountId ?? null,
-    categoryId ?? null,
+    accountId !== undefined ? (accountId ?? null) : existing.account_id,
+    effectiveType === 'transfer' ? null : (categoryId !== undefined ? (categoryId ?? null) : existing.category_id),
+    effectiveType === 'transfer' ? (transferToAccountId !== undefined ? (transferToAccountId ?? null) : existing.transfer_to_account_id) : null,
     amount !== undefined ? Math.abs(amount) : null,
     type ?? null,
     frequency ?? null,
-    dayOfWeek ?? null,
-    dayOfMonth ?? null,
+    dayOfWeek !== undefined ? dayOfWeek : existing.day_of_week,
+    dayOfMonth !== undefined ? dayOfMonth : existing.day_of_month,
     startDate ?? null,
-    endDate ?? null,
+    endDate !== undefined ? (endDate ?? null) : existing.end_date,
     active !== undefined ? (active ? 1 : 0) : null,
     id
   );
@@ -276,10 +297,12 @@ recurringRouter.get('/instances/:year/:month', (req, res) => {
       r.*,
       a.name as account_name,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      ta.name as transfer_to_account_name
     FROM recurring_transactions r
     LEFT JOIN accounts a ON r.account_id = a.id
     LEFT JOIN categories c ON r.category_id = c.id
+    LEFT JOIN accounts ta ON r.transfer_to_account_id = ta.id
     WHERE r.active = 1
       AND r.start_date <= ?
       AND (r.end_date IS NULL OR r.end_date >= ?)
@@ -342,6 +365,8 @@ recurringRouter.get('/instances/:year/:month', (req, res) => {
         type: r.type,
         categoryName: r.category_name ?? undefined,
         categoryColor: r.category_color ?? undefined,
+        transferToAccountId: r.transfer_to_account_id ?? undefined,
+        transferToAccountName: r.transfer_to_account_name ?? undefined,
         isModified: !!exception,
         exceptionId: exception?.id ?? undefined,
         exceptionNote: exception?.note ?? undefined,
@@ -389,11 +414,12 @@ recurringRouter.post('/instances/:id/toggle', (req, res) => {
 
     if (recurring.account_id) {
       const result = db.prepare(`
-        INSERT INTO transactions (account_id, category_id, amount, type, description, date)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO transactions (account_id, category_id, transfer_to_account_id, amount, type, description, date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         recurring.account_id,
-        recurring.category_id || null,
+        recurring.type === 'transfer' ? null : (recurring.category_id || null),
+        recurring.type === 'transfer' ? (recurring.transfer_to_account_id || null) : null,
         effectiveAmount,
         recurring.type,
         recurring.name,

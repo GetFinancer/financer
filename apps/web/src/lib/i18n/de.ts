@@ -247,6 +247,7 @@ const de = {
   recurringIncome: 'Einnahmen',
   recurringNoExpenses: 'Keine Ausgaben-Daueraufträge',
   recurringNoIncome: 'Keine Einnahmen-Daueraufträge',
+  recurringTransfers: 'Umbuchungen',
   recurringActive: 'Aktiv',
   recurringInactive: 'Inaktiv',
   recurringConfirmDelete: 'Wiederkehrende Transaktion wirklich löschen?',

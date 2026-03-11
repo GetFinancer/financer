@@ -59,6 +59,7 @@ export default function RecurringPage() {
     name: '',
     accountId: undefined,
     categoryId: undefined,
+    transferToAccountId: undefined,
     amount: 0,
     type: 'expense',
     frequency: 'monthly',
@@ -123,6 +124,7 @@ export default function RecurringPage() {
       name: '',
       accountId: undefined,
       categoryId: undefined,
+      transferToAccountId: undefined,
       amount: 0,
       type: 'expense',
       frequency: 'monthly',
@@ -141,6 +143,7 @@ export default function RecurringPage() {
       name: item.name,
       accountId: item.accountId,
       categoryId: item.categoryId,
+      transferToAccountId: item.transferToAccountId,
       amount: item.amount,
       type: item.type,
       frequency: item.frequency,
@@ -438,10 +441,10 @@ export default function RecurringPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">{t('txType')}</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, type: 'expense', categoryId: undefined })}
+                      onClick={() => setForm({ ...form, type: 'expense', categoryId: undefined, transferToAccountId: undefined })}
                       className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
                         form.type === 'expense'
                           ? 'bg-expense text-white'
@@ -452,7 +455,7 @@ export default function RecurringPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, type: 'income', categoryId: undefined })}
+                      onClick={() => setForm({ ...form, type: 'income', categoryId: undefined, transferToAccountId: undefined })}
                       className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
                         form.type === 'income'
                           ? 'bg-income text-white'
@@ -460,6 +463,17 @@ export default function RecurringPage() {
                       }`}
                     >
                       {t('typeIncome')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, type: 'transfer', categoryId: undefined })}
+                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                        form.type === 'transfer'
+                          ? 'bg-primary text-white'
+                          : 'bg-background border border-border hover:bg-background-surface-hover'
+                      }`}
+                    >
+                      {t('typeTransfer')}
                     </button>
                   </div>
                 </div>
@@ -482,16 +496,35 @@ export default function RecurringPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">{t('txCategory')}</label>
-                  <CategoryCombobox
-                    value={form.categoryId ? String(form.categoryId) : ''}
-                    onChange={(val) => setForm({ ...form, categoryId: val ? parseInt(val) : undefined })}
-                    categories={hierarchicalCategories.map(({ category }) => category)}
-                    transactionType={form.type}
-                    onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
-                  />
-                </div>
+                {form.type !== 'transfer' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">{t('txCategory')}</label>
+                    <CategoryCombobox
+                      value={form.categoryId ? String(form.categoryId) : ''}
+                      onChange={(val) => setForm({ ...form, categoryId: val ? parseInt(val) : undefined })}
+                      categories={hierarchicalCategories.map(({ category }) => category)}
+                      transactionType={form.type}
+                      onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+                    />
+                  </div>
+                )}
+
+                {form.type === 'transfer' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">{t('txTargetAccount')}</label>
+                    <select
+                      value={form.transferToAccountId || ''}
+                      onChange={(e) => setForm({ ...form, transferToAccountId: e.target.value ? parseInt(e.target.value) : undefined })}
+                      className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">{t('recurringNoAccount')}</option>
+                      {accounts.filter(a => a.id !== form.accountId).map((acc) => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className={`grid gap-4 ${form.frequency === 'weekly' || ['monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly'].includes(form.frequency) ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <div>
@@ -594,6 +627,7 @@ export default function RecurringPage() {
             </button>
           </div>
         ) : (
+          <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Expenses (Left) */}
             <div className="space-y-3">
@@ -778,6 +812,85 @@ export default function RecurringPage() {
                 ))
               )}
             </div>
+          </div>
+
+          {/* Transfers (full width below) */}
+          {recurring.filter(item => item.type === 'transfer').length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-primary">{t('recurringTransfers')}</h2>
+              {recurring.filter(item => item.type === 'transfer').map((item) => (
+                <div
+                  key={item.id}
+                  className={`glass-card p-4 ${!item.active ? 'opacity-50' : ''}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/20 text-primary">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="font-medium truncate">{item.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {frequencyLabels[item.frequency]}
+                            {item.frequency === 'weekly' && item.dayOfWeek !== undefined && (
+                              <> &middot; {weekdayLabels[item.dayOfWeek]}</>
+                            )}
+                            {['monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly'].includes(item.frequency) &&
+                              item.dayOfMonth && <> &middot; {item.dayOfMonth}.</>}
+                          </p>
+                          {(item.accountName || item.transferToAccountName) && (
+                            <p className="text-xs text-primary mt-1">
+                              {item.accountName} {item.transferToAccountName ? `→ ${item.transferToAccountName}` : ''}
+                            </p>
+                          )}
+                        </div>
+                        <span className="font-semibold whitespace-nowrap text-primary">
+                          {item.amount.toFixed(2)} {'\u20AC'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <button
+                          onClick={() => handleToggleActive(item)}
+                          className={`px-3 py-1.5 text-xs rounded-md font-medium ${
+                            item.active ? 'bg-income/20 text-income' : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {item.active ? t('recurringActive') : t('recurringInactive')}
+                        </button>
+                        <button
+                          onClick={() => handleViewOccurrences(item)}
+                          className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-primary hover:text-primary/80 hover:bg-primary/10 rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           </div>
         )}
 

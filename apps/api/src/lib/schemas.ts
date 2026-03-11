@@ -101,11 +101,12 @@ export const UpdateCategorySchema = CreateCategorySchema.partial();
 export const CreateRecurringSchema = z.object({
   name: z.string().min(1, 'Name ist erforderlich'),
   amount: z.number(),
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'transfer']),
   frequency: z.enum(['daily', 'weekly', 'monthly', 'bimonthly', 'quarterly', 'semiannually', 'yearly']),
   startDate: dateStr,
   accountId: z.number().int().optional(),
   categoryId: z.number().int().optional(),
+  transferToAccountId: z.number().int().positive().optional(),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   endDate: dateStr.optional(),

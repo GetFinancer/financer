@@ -249,6 +249,7 @@ const en: Record<TranslationKey, string> = {
   recurringIncome: 'Income',
   recurringNoExpenses: 'No expense recurring transactions',
   recurringNoIncome: 'No income recurring transactions',
+  recurringTransfers: 'Transfers',
   recurringActive: 'Active',
   recurringInactive: 'Inactive',
   recurringConfirmDelete: 'Really delete this recurring transaction?',
