@@ -127,8 +127,9 @@ export interface RecurringTransaction {
   name: string;
   accountId?: number;
   categoryId?: number;
+  transferToAccountId?: number;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   frequency: RecurringFrequency;
   dayOfWeek?: number; // 0-6 (Sonntag-Samstag)
   dayOfMonth?: number; // 1-31
@@ -143,6 +144,7 @@ export interface RecurringTransactionWithDetails extends RecurringTransaction {
   accountName?: string;
   categoryName?: string;
   categoryColor?: string;
+  transferToAccountName?: string;
 }
 
 export interface RecurringInstance {
@@ -161,9 +163,11 @@ export interface RecurringInstanceWithDetails extends RecurringInstance {
   accountName?: string;
   amount: number; // Effective amount (after exception applied)
   originalAmount: number; // Base amount from recurring transaction
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   categoryName?: string;
   categoryColor?: string;
+  transferToAccountId?: number;
+  transferToAccountName?: string;
   isModified: boolean; // true if exception exists
   exceptionId?: number; // ID of exception if exists
   exceptionNote?: string; // Note from exception
@@ -173,8 +177,9 @@ export interface CreateRecurringTransactionRequest {
   name: string;
   accountId?: number;
   categoryId?: number;
+  transferToAccountId?: number;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   frequency: RecurringFrequency;
   dayOfWeek?: number;
   dayOfMonth?: number;
