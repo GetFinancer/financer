@@ -1010,7 +1010,7 @@ export default function Dashboard() {
                   {t('dashboardCreateRecurring')}
                 </Link>
               </div>
-            ) : (
+            ) : (<>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Ausgaben (Links) */}
                 <div className="space-y-3">
@@ -1203,7 +1203,74 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-            )}
+
+              {/* Umbuchungen (full width below) */}
+              {instances.filter(i => i.type === 'transfer' && (!hideCompleted || !i.completed)).length > 0 && (
+                <div className="space-y-3 mt-4">
+                  <h3 className="text-base font-semibold text-primary bg-primary/10 rounded-lg py-2 px-3 text-center md:text-left md:text-sm md:font-medium md:text-muted-foreground md:bg-transparent md:py-0 md:px-1">{t('recurringTransfers')}</h3>
+                  {instances
+                    .filter(i => i.type === 'transfer' && (!hideCompleted || !i.completed))
+                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()) || (i as any).transferToAccountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
+                    .map((instance) => (
+                    <div
+                      key={`ri-${instance.id}`}
+                      className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => handleToggleInstance(instance.id)}
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
+                            instance.completed
+                              ? 'bg-income border-income text-white'
+                              : 'border-border hover:border-primary'
+                          }`}
+                        >
+                          {instance.completed && '✓'}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`font-medium ${instance.completed ? 'line-through' : ''}`}>
+                              {instance.name}
+                              {instance.isModified && (
+                                <span className="ml-2 text-xs text-primary">✎</span>
+                              )}
+                            </p>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-semibold text-primary whitespace-nowrap">
+                                {formatCurrency(instance.amount, 'EUR', numberLocale)}
+                              </p>
+                              {instance.isModified && instance.originalAmount !== instance.amount && (
+                                <p className="text-xs text-muted-foreground line-through">
+                                  {formatCurrency(instance.originalAmount, 'EUR', numberLocale)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(instance.dueDate, numberLocale)}
+                              {instance.accountName && (
+                                <span className="ml-2 text-xs text-primary">• {instance.accountName}{(instance as any).transferToAccountName ? ` → ${(instance as any).transferToAccountName}` : ''}</span>
+                              )}
+                            </p>
+                            <button
+                              onClick={() => openEditInstance(instance)}
+                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
+                              title={t('dashboardAdjustAmount')}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>)}
           </section>
 
           {/* Recent Transactions */}
