@@ -289,7 +289,7 @@ export default function RecurringPage() {
     if (!viewingOccurrences || !editingOccurrence) return;
 
     const amount = exceptionForm.amount ?? editingOccurrence.originalAmount;
-    if (!amount || amount <= 0) {
+    if (amount === undefined || amount === null || amount < 0) {
       setError(t('confirmValidAmount'));
       return;
     }

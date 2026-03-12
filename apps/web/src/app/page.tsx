@@ -253,7 +253,7 @@ export default function Dashboard() {
 
     try {
       const amount = parseFloat(editAmount);
-      if (isNaN(amount) || amount <= 0) {
+      if (isNaN(amount) || amount < 0) {
         setSaveError(t('confirmValidAmount'));
         return;
       }
