@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { tenantStorage } from '../db/index.js';
-import { getTenantStatus, redeemCoupon } from '../db/registry.js';
+import { tenantStorage, unloadTenantDatabase } from '../db/index.js';
+import { getTenantStatus, redeemCoupon, deleteTenant } from '../db/registry.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 export const tenantRouter = Router();
@@ -75,4 +75,27 @@ tenantRouter.post('/redeem', authMiddleware, (req, res) => {
   }
 
   res.json({ success: true, data: { type: result.type, message } });
+});
+
+// Self-deletion: tenant deletes their own account (cloudhost only)
+tenantRouter.delete('/account', authMiddleware, (req, res) => {
+  const deploymentMode = process.env.DEPLOYMENT_MODE || 'selfhosted';
+  if (deploymentMode !== 'cloudhost') {
+    res.status(403).json({ success: false, error: 'Not available in self-hosted mode' });
+    return;
+  }
+
+  const tenant = tenantStorage.getStore();
+  if (!tenant) {
+    res.status(500).json({ success: false, error: 'No tenant context' });
+    return;
+  }
+
+  deleteTenant(tenant);
+  unloadTenantDatabase(tenant);
+
+  // Destroy session
+  req.session.destroy(() => {});
+
+  res.json({ success: true });
 });

@@ -8,6 +8,7 @@ import { useTranslation, Locale } from '@/lib/i18n';
 import type { TenantStatus } from '@financer/shared';
 import { PasswordInput } from '@/components/PasswordInput';
 import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface TwoFactorStatus {
   enabled: boolean;
@@ -227,6 +228,17 @@ export default function SettingsPage() {
       setPasswordError(error.message || t('settingsPasswordChangeFailed'));
     } finally {
       setChangingPassword(false);
+    }
+  }
+
+  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
+
+  async function handleDeleteAccount() {
+    try {
+      await api.deleteMyAccount();
+      router.push('/login');
+    } catch (error) {
+      console.error('Failed to delete account:', error);
     }
   }
 
@@ -905,7 +917,31 @@ export default function SettingsPage() {
             {t('logout')}
           </button>
         </section>
+
+        {/* Danger Zone — cloudhost only */}
+        {process.env.DEPLOYMENT_MODE === 'cloudhost' && (
+          <section className="glass-card p-6 border border-destructive/30">
+            <h2 className="text-lg font-semibold text-destructive mb-2">{t('settingsDeleteAccount')}</h2>
+            <p className="text-sm text-muted-foreground mb-4">{t('settingsDeleteAccountDesc')}</p>
+            <button
+              onClick={() => setDeleteAccountDialog(true)}
+              className="px-4 py-2 border border-destructive text-destructive rounded-md hover:bg-destructive/10 transition-colors text-sm"
+            >
+              {t('settingsDeleteAccountButton')}
+            </button>
+          </section>
+        )}
       </div>
+
+      {deleteAccountDialog && (
+        <ConfirmDialog
+          message={t('settingsDeleteAccountConfirm')}
+          onConfirm={() => { setDeleteAccountDialog(false); handleDeleteAccount(); }}
+          onCancel={() => setDeleteAccountDialog(false)}
+          confirmLabel={t('settingsDeleteAccountButton')}
+          cancelLabel={t('cancel')}
+        />
+      )}
 
       {releaseNotesOpen && (
         <ReleaseNotesModal

@@ -166,6 +166,10 @@ const en: Record<TranslationKey, string> = {
   settingsBillingError: 'Failed to open the payment page. Please try again.',
 
   settingsSupportContact: 'Questions or issues? Contact us at',
+  settingsDeleteAccount: 'Delete Account',
+  settingsDeleteAccountDesc: 'Permanently deletes your account and all stored data.',
+  settingsDeleteAccountConfirm: 'Really delete your account? This action cannot be undone.',
+  settingsDeleteAccountButton: 'Delete account permanently',
 
   // Settings - Session
   settingsSession: 'Session',

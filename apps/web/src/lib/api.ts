@@ -300,6 +300,7 @@ export const api = {
 
   // Tenant
   getTenantStatus: () => fetchApi<TenantStatus>('/tenant/status'),
+  deleteMyAccount: () => fetchApi<void>('/tenant/account', { method: 'DELETE' }),
 
   // Billing
   createCheckoutSession: () =>
