@@ -238,6 +238,10 @@ const en: Record<TranslationKey, string> = {
   transactionsNoTransactions: 'No transactions yet.',
   transactionsNoResults: 'No transactions found for "{term}"',
   transactionsConfirmDelete: 'Really delete this transaction?',
+  transactionsSelect: 'Select',
+  transactionsCancelSelect: 'Cancel',
+  transactionsDeleteSelected: 'Delete {count}',
+  transactionsConfirmDeleteMultiple: 'Really delete {count} transactions?',
 
   // Recurring page
   recurringTitle: 'Recurring Transactions',

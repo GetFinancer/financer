@@ -24,6 +24,8 @@ export default function TransactionsPage() {
   const [saveError, setSaveError] = useState('');
   const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const autofillCategoryRef = useRef<string | null>(null); // tracks auto-filled categoryId
   // Form state
   const [formData, setFormData] = useState({
@@ -234,6 +236,47 @@ export default function TransactionsPage() {
     });
   }
 
+  function toggleSelectMode() {
+    setSelectMode(prev => !prev);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredTransactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredTransactions.map(tx => tx.id)));
+    }
+  }
+
+  function handleDeleteSelected() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    setConfirmDialog({
+      message: t('transactionsConfirmDeleteMultiple', { count: String(count) }),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await Promise.all([...selectedIds].map(id => api.deleteTransaction(id)));
+          setSelectMode(false);
+          setSelectedIds(new Set());
+          loadData();
+        } catch (error) {
+          setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorDeleting'));
+        }
+      },
+    });
+  }
+
   async function handleCreateCategoryFromDesc(name: string) {
     if (formData.type === 'transfer') return;
     try {
@@ -344,12 +387,41 @@ export default function TransactionsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t('transactionsTitle')}</h1>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
-          >
-            {t('newTransaction')}
-          </button>
+          <div className="flex items-center gap-2">
+            {selectMode ? (
+              <>
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={handleDeleteSelected}
+                    className="px-4 py-2 bg-destructive text-white rounded-full hover:opacity-90 active:scale-95 transition-all text-sm font-medium"
+                  >
+                    {t('transactionsDeleteSelected', { count: String(selectedIds.size) })}
+                  </button>
+                )}
+                <button
+                  onClick={toggleSelectMode}
+                  className="px-4 py-2 border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all text-sm"
+                >
+                  {t('transactionsCancelSelect')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={toggleSelectMode}
+                  className="px-4 py-2 border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all text-sm"
+                >
+                  {t('transactionsSelect')}
+                </button>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
+                >
+                  {t('newTransaction')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Search Field */}
@@ -631,15 +703,47 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="glass-card divide-y divide-border/50">
+            {selectMode && filteredTransactions.length > 1 && (
+              <div className="p-3 px-4 flex items-center gap-3 border-b border-border bg-background-surface-hover/50">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredTransactions.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-primary cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size > 0 ? `${selectedIds.size} / ${filteredTransactions.length}` : t('transactionsSelect')}
+                </span>
+              </div>
+            )}
             {filteredTransactions.map((tx) => (
-              <div key={tx.id} className="p-4 flex items-center gap-3 hover:bg-background-surface-hover active:bg-background-surface-hover">
+              <div
+                key={tx.id}
+                className={`p-4 flex items-center gap-3 hover:bg-background-surface-hover active:bg-background-surface-hover ${selectMode ? 'cursor-pointer' : ''} ${selectMode && selectedIds.has(tx.id) ? 'bg-primary/5' : ''}`}
+                onClick={selectMode ? () => toggleSelect(tx.id) : undefined}
+              >
+                {/* Checkbox in select mode */}
+                {selectMode && (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(tx.id)}
+                    onChange={() => toggleSelect(tx.id)}
+                    onClick={e => e.stopPropagation()}
+                    className="w-4 h-4 accent-primary cursor-pointer flex-shrink-0"
+                  />
+                )}
+
                 {/* Icon */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  tx.type === 'income' ? 'bg-income/20 text-income' : 'bg-expense/20 text-expense'
+                  tx.type === 'income' ? 'bg-income/20 text-income' :
+                  tx.type === 'transfer' ? 'bg-primary/20 text-primary' :
+                  'bg-expense/20 text-expense'
                 }`}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {tx.type === 'income' ? (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                    ) : tx.type === 'transfer' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     ) : (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
                     )}
@@ -652,7 +756,9 @@ export default function TransactionsPage() {
                     {translateDesc(tx.description) || tx.categoryName || t('txTransaction')}
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
-                    {tx.accountName} • {formatDate(tx.date, numberLocale)}
+                    {tx.type === 'transfer' && tx.transferToAccountName
+                      ? `${tx.accountName} → ${tx.transferToAccountName} • ${formatDate(tx.date, numberLocale)}`
+                      : `${tx.accountName} • ${formatDate(tx.date, numberLocale)}`}
                     {tx.categoryName && (
                       <span
                         className="ml-2 px-1.5 py-0.5 text-xs rounded"
@@ -669,34 +775,36 @@ export default function TransactionsPage() {
 
                 {/* Amount & Actions */}
                 <div className="flex flex-col items-end gap-1">
-                  <span
-                    className={`font-semibold whitespace-nowrap ${
-                      tx.type === 'income' ? 'text-income' : 'text-expense'
-                    }`}
-                  >
-                    {tx.type === 'income' ? '+' : '-'}
+                  <span className={`font-semibold whitespace-nowrap ${
+                    tx.type === 'income' ? 'text-income' :
+                    tx.type === 'transfer' ? 'text-primary' :
+                    'text-expense'
+                  }`}>
+                    {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}
                     {formatCurrency(tx.amount, 'EUR', numberLocale)}
                   </span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleEdit(tx)}
-                      className="flex items-center gap-1.5 px-2 py-1.5 min-h-[36px] text-xs text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span className="hidden sm:inline">{t('edit')}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(tx.id)}
-                      className="flex items-center gap-1.5 px-2 py-1.5 min-h-[36px] text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span className="hidden sm:inline">{t('delete')}</span>
-                    </button>
-                  </div>
+                  {!selectMode && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(tx)}
+                        className="flex items-center gap-1.5 px-2 py-1.5 min-h-[36px] text-xs text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="hidden sm:inline">{t('edit')}</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tx.id)}
+                        className="flex items-center gap-1.5 px-2 py-1.5 min-h-[36px] text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span className="hidden sm:inline">{t('delete')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

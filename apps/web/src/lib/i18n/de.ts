@@ -236,6 +236,10 @@ const de = {
   transactionsNoTransactions: 'Noch keine Transaktionen vorhanden.',
   transactionsNoResults: 'Keine Transaktionen gefunden für "{term}"',
   transactionsConfirmDelete: 'Transaktion wirklich löschen?',
+  transactionsSelect: 'Auswählen',
+  transactionsCancelSelect: 'Abbrechen',
+  transactionsDeleteSelected: '{count} löschen',
+  transactionsConfirmDeleteMultiple: '{count} Transaktionen wirklich löschen?',
 
   // Recurring page
   recurringTitle: 'Daueraufträge',
