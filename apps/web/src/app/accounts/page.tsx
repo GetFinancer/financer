@@ -190,7 +190,7 @@ export default function AccountsPage() {
         />
       )}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{t('accountsTitle')}</h1>
             <p className="text-muted-foreground">
@@ -202,7 +202,7 @@ export default function AccountsPage() {
               if (showForm) resetForm();
               else setShowForm(true);
             }}
-            className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
+            className="self-start px-3 py-1.5 text-sm nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
           >
             {showForm ? t('cancel') : t('accountsNewAccount')}
           </button>

@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithDetails | null>(null);
   const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
   const autofillTxCategoryRef = useRef<string | null>(null);
+  const txAmountInputRef = useRef<HTMLInputElement>(null);
   const [txFormData, setTxFormData] = useState({
     accountId: '',
     categoryId: '',
@@ -252,7 +253,7 @@ export default function Dashboard() {
 
     try {
       const amount = parseFloat(editAmount);
-      if (isNaN(amount) || amount <= 0) {
+      if (isNaN(amount) || amount < 0) {
         setSaveError(t('confirmValidAmount'));
         return;
       }
@@ -453,6 +454,7 @@ export default function Dashboard() {
       }));
       loadRecentTransactions();
       loadDashboard();
+      setTimeout(() => txAmountInputRef.current?.focus(), 50);
     } catch (error) {
       setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
@@ -1303,11 +1305,15 @@ export default function Dashboard() {
                   <div key={transaction.id} className="p-4 flex items-center gap-3 hover:bg-background-surface-hover active:bg-background-surface-hover">
                     {/* Icon */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      transaction.type === 'income' ? 'bg-income/20 text-income' : 'bg-expense/20 text-expense'
+                      transaction.type === 'income' ? 'bg-income/20 text-income' :
+                      transaction.type === 'transfer' ? 'bg-primary/20 text-primary' :
+                      'bg-expense/20 text-expense'
                     }`}>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {transaction.type === 'income' ? (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                        ) : transaction.type === 'transfer' ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         ) : (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
                         )}
@@ -1320,14 +1326,20 @@ export default function Dashboard() {
                         {transaction.description || transaction.categoryName || t('txTransaction')}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        {transaction.accountName} • {formatDate(transaction.date, numberLocale)}
+                        {transaction.type === 'transfer' && transaction.transferToAccountName
+                          ? `${transaction.accountName} → ${transaction.transferToAccountName} • ${formatDate(transaction.date, numberLocale)}`
+                          : `${transaction.accountName} • ${formatDate(transaction.date, numberLocale)}`}
                       </p>
                     </div>
 
                     {/* Amount & Edit Button */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className={`font-semibold whitespace-nowrap ${transaction.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, 'EUR', numberLocale)}
+                      <p className={`font-semibold whitespace-nowrap ${
+                        transaction.type === 'income' ? 'text-income' :
+                        transaction.type === 'transfer' ? 'text-primary' :
+                        'text-expense'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : transaction.type === 'transfer' ? '' : '-'}{formatCurrency(transaction.amount, 'EUR', numberLocale)}
                       </p>
                       <button
                         onClick={() => openEditTransaction(transaction)}
@@ -1447,8 +1459,8 @@ export default function Dashboard() {
                 {t('dashboardApplyToFuture')}
               </button>
 
-              {/* Spacer for bottom padding */}
-              <div style={{ height: '40px' }} />
+              {/* Spacer for bottom nav + safe area */}
+              <div style={{ height: '80px' }} />
             </div>
           </div>
         </div>
@@ -1519,6 +1531,7 @@ export default function Dashboard() {
                 <label className="block text-sm font-medium mb-2">{t('txAmount')}</label>
                 <div className="relative">
                   <input
+                    ref={txAmountInputRef}
                     type="number"
                     step="0.01"
                     min="0"
@@ -1726,8 +1739,8 @@ export default function Dashboard() {
                 </button>
               )}
 
-              {/* Spacer for bottom padding */}
-              <div style={{ height: '20px' }} />
+              {/* Spacer for bottom nav + safe area */}
+              <div style={{ height: '80px' }} />
             </form>
           </div>
         </div>

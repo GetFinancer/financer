@@ -164,6 +164,10 @@ const de = {
   settingsBillingError: 'Fehler beim Öffnen der Zahlungsseite. Bitte versuche es erneut.',
 
   settingsSupportContact: 'Fragen oder Probleme? Kontaktiere uns unter',
+  settingsDeleteAccount: 'Konto löschen',
+  settingsDeleteAccountDesc: 'Löscht dein Konto und alle gespeicherten Daten unwiderruflich.',
+  settingsDeleteAccountConfirm: 'Konto wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+  settingsDeleteAccountButton: 'Konto endgültig löschen',
 
   // Settings - Session
   settingsSession: 'Sitzung',
@@ -236,6 +240,10 @@ const de = {
   transactionsNoTransactions: 'Noch keine Transaktionen vorhanden.',
   transactionsNoResults: 'Keine Transaktionen gefunden für "{term}"',
   transactionsConfirmDelete: 'Transaktion wirklich löschen?',
+  transactionsSelect: 'Auswählen',
+  transactionsCancelSelect: 'Abbrechen',
+  transactionsDeleteSelected: '{count} löschen',
+  transactionsConfirmDeleteMultiple: '{count} Transaktionen wirklich löschen?',
 
   // Recurring page
   recurringTitle: 'Daueraufträge',

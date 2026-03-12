@@ -22,11 +22,11 @@ export function ReleaseNotesModal({ version, onClose }: ReleaseNotesModalProps) 
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md glass-card p-6 shadow-xl animate-page-in"
+        className="relative w-full max-w-md glass-card shadow-xl animate-page-in flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Sticky Header */}
+        <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary">
               v{version}
@@ -44,61 +44,63 @@ export function ReleaseNotesModal({ version, onClose }: ReleaseNotesModalProps) 
           </button>
         </div>
 
-        {notes?.date && (
-          <p className="text-xs text-muted-foreground mb-4">{notes.date}</p>
-        )}
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto px-6 flex-1">
+          {notes?.date && (
+            <p className="text-xs text-muted-foreground mb-4">{notes.date}</p>
+          )}
 
-        {/* Change lists */}
-        {notes?.new && notes.new.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('releaseNotesNew')}
-            </h4>
-            <ul className="space-y-1">
-              {notes.new.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                  <span>{getLabel(item)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {notes?.new && notes.new.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                {t('releaseNotesNew')}
+              </h4>
+              <ul className="space-y-1">
+                {notes.new.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <span>{getLabel(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {notes?.improved && notes.improved.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('releaseNotesImproved')}
-            </h4>
-            <ul className="space-y-1">
-              {notes.improved.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                  <span>{getLabel(item)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {notes?.improved && notes.improved.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                {t('releaseNotesImproved')}
+              </h4>
+              <ul className="space-y-1">
+                {notes.improved.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <span>{getLabel(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {notes?.fixed && notes.fixed.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('releaseNotesFixed')}
-            </h4>
-            <ul className="space-y-1">
-              {notes.fixed.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                  <span>{getLabel(item)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {notes?.fixed && notes.fixed.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                {t('releaseNotesFixed')}
+              </h4>
+              <ul className="space-y-1">
+                {notes.fixed.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <span>{getLabel(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
-        {/* Footer */}
-        <div className="mt-6 flex justify-end">
+        {/* Sticky Footer */}
+        <div className="p-6 pt-4 flex justify-end flex-shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
