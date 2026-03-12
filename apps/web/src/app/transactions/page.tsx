@@ -27,6 +27,7 @@ export default function TransactionsPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const autofillCategoryRef = useRef<string | null>(null); // tracks auto-filled categoryId
+  const amountInputRef = useRef<HTMLInputElement>(null);
   // Form state
   const [formData, setFormData] = useState({
     accountId: '',
@@ -216,6 +217,7 @@ export default function TransactionsPage() {
       date: new Date().toISOString().split('T')[0],
     }));
     loadData();
+    setTimeout(() => amountInputRef.current?.focus(), 50);
   } catch (error) {
       if (isTrialExpiredError(error)) {
         setSaveError(t('trialExpiredWriteBlocked'));
@@ -504,6 +506,7 @@ export default function TransactionsPage() {
                   <label className="block text-sm font-medium mb-2">{t('txAmount')}</label>
                   <div className="relative">
                     <input
+                      ref={amountInputRef}
                       type="number"
                       step="0.01"
                       min="0"

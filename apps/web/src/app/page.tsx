@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithDetails | null>(null);
   const [recurringQuick, setRecurringQuick] = useState<{ name: string; categoryId: string } | null>(null);
   const autofillTxCategoryRef = useRef<string | null>(null);
+  const txAmountInputRef = useRef<HTMLInputElement>(null);
   const [txFormData, setTxFormData] = useState({
     accountId: '',
     categoryId: '',
@@ -453,6 +454,7 @@ export default function Dashboard() {
       }));
       loadRecentTransactions();
       loadDashboard();
+      setTimeout(() => txAmountInputRef.current?.focus(), 50);
     } catch (error) {
       setSaveError(isTrialExpiredError(error) ? t('trialExpiredWriteBlocked') : t('errorSaving'));
     }
@@ -1529,6 +1531,7 @@ export default function Dashboard() {
                 <label className="block text-sm font-medium mb-2">{t('txAmount')}</label>
                 <div className="relative">
                   <input
+                    ref={txAmountInputRef}
                     type="number"
                     step="0.01"
                     min="0"
