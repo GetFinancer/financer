@@ -13,6 +13,60 @@ export interface VersionNotes {
 
 export const releaseNotes: VersionNotes[] = [
   {
+    version: '1.6.5',
+    date: '2026-03',
+    new: [
+      {
+        de: 'Umbuchungen als Dauerauftrag — wiederkehrende Transfers zwischen Konten anlegen',
+        en: 'Transfers as recurring transactions — create recurring transfers between accounts',
+      },
+      {
+        de: 'Mehrfachauswahl in Transaktionen — mehrere Einträge auf einmal markieren und löschen',
+        en: 'Multi-select in transactions — select and delete multiple entries at once',
+      },
+      {
+        de: 'Konto selbst löschen — Nutzer können ihr Konto inkl. aller Daten in den Einstellungen löschen (nur Cloud)',
+        en: 'Self-service account deletion — users can delete their account and all data in settings (Cloud only)',
+      },
+    ],
+    improved: [
+      {
+        de: 'Umbuchungen werden überall korrekt blau dargestellt (Dashboard, Transaktionen, Daueraufträge)',
+        en: 'Transfers are now consistently shown in blue across Dashboard, Transactions, and Recurring',
+      },
+      {
+        de: 'Betrag eines Dauerauftrags kann für einen einzelnen Monat jetzt auch auf 0 gesetzt werden',
+        en: 'Recurring transaction amount for a single month can now be set to 0',
+      },
+      {
+        de: 'Mobile: Seitenüberschriften und Buttons umbrechen korrekt auf kleinen Geräten (iPhone SE)',
+        en: 'Mobile: page headers and buttons now wrap correctly on small screens (iPhone SE)',
+      },
+      {
+        de: 'Mobile: Modals scrollen korrekt und der Speichern-Button ist immer sichtbar',
+        en: 'Mobile: modals scroll correctly and the save button is always visible',
+      },
+      {
+        de: 'Transaktionsseite lädt zuverlässig auch ohne Cloud-Features (Selfhosted)',
+        en: 'Transactions page loads reliably even without Cloud features (self-hosted)',
+      },
+      {
+        de: '/admin ist bei Tenant-Subdomains nicht erreichbar und leitet zur Startseite weiter',
+        en: '/admin is no longer accessible on tenant subdomains and redirects to the home page',
+      },
+    ],
+    fixed: [
+      {
+        de: 'Umbuchungs-Zielkonto fehlte im Transaktions-Modal auf der Transaktionsseite',
+        en: 'Transfer target account was missing in the transaction modal on the Transactions page',
+      },
+      {
+        de: 'Release-Notes-Modal war auf Mobilgeräten nicht scrollbar und nicht schließbar',
+        en: 'Release notes modal was not scrollable or closable on mobile devices',
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-03',
     new: [
