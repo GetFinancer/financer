@@ -52,7 +52,9 @@ async function fetchApi<T>(
   const data: ApiResponse<T> = await response.json();
 
   if (response.status === 404 && data.error === 'Tenant not found') {
-    window.location.href = 'https://getfinancer.com';
+    if (process.env.DEPLOYMENT_MODE === 'cloudhost') {
+      window.location.href = 'https://getfinancer.com';
+    }
     throw new Error('Tenant not found');
   }
 

@@ -352,11 +352,11 @@ export default function RecurringPage() {
         />
       )}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h1 className="text-2xl font-bold">{t('recurringTitle')}</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
+            className="self-start px-3 py-1.5 text-sm nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
           >
             {t('newRecurring')}
           </button>
@@ -608,8 +608,8 @@ export default function RecurringPage() {
                 >
                   {editingId ? t('save') : t('create')}
                 </button>
-                {/* Spacer for bottom padding */}
-                <div style={{ height: '40px' }} />
+                {/* Spacer for bottom nav + safe area */}
+                <div style={{ height: '80px' }} />
               </form>
             </div>
           </div>
@@ -1091,8 +1091,8 @@ export default function RecurringPage() {
                   </button>
                 )}
 
-                {/* Spacer for bottom padding */}
-                <div style={{ height: '40px' }} />
+                {/* Spacer for bottom nav + safe area */}
+                <div style={{ height: '80px' }} />
               </form>
             </div>
           </div>

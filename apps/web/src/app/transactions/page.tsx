@@ -31,6 +31,7 @@ export default function TransactionsPage() {
   const [formData, setFormData] = useState({
     accountId: '',
     categoryId: '',
+    transferToAccountId: '',
     amount: '',
     type: 'expense' as 'income' | 'expense' | 'transfer',
     description: '',
@@ -59,7 +60,7 @@ export default function TransactionsPage() {
         api.getTransactions(),
         api.getAccounts(),
         api.getCategories(),
-        api.getSharedAccounts(),
+        api.getSharedAccounts().catch(() => [] as SharedAccountInfo[]),
       ]);
 
       setAccounts(accs);
@@ -105,6 +106,7 @@ export default function TransactionsPage() {
     setFormData({
       accountId: defaultAccount ? String(defaultAccount.id) : '',
       categoryId: '',
+      transferToAccountId: '',
       amount: '',
       type: 'expense',
       description: '',
@@ -123,6 +125,7 @@ export default function TransactionsPage() {
     setFormData({
       accountId,
       categoryId: tx.categoryId ? String(tx.categoryId) : '',
+      transferToAccountId: tx.transferToAccountId ? String(tx.transferToAccountId) : '',
       amount: String(tx.amount),
       type: tx.type,
       description: tx.description || '',
@@ -155,7 +158,8 @@ export default function TransactionsPage() {
       } else {
         const payload = {
           accountId: Number(formData.accountId),
-          categoryId: formData.categoryId ? Number(formData.categoryId) : undefined,
+          categoryId: formData.type !== 'transfer' && formData.categoryId ? Number(formData.categoryId) : undefined,
+          transferToAccountId: formData.type === 'transfer' && formData.transferToAccountId ? Number(formData.transferToAccountId) : undefined,
           amount: Number(formData.amount),
           type: formData.type,
           description: formData.description || undefined,
@@ -385,7 +389,7 @@ export default function TransactionsPage() {
         />
       )}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h1 className="text-2xl font-bold">{t('transactionsTitle')}</h1>
           <div className="flex items-center gap-2">
             {selectMode ? (
@@ -393,14 +397,14 @@ export default function TransactionsPage() {
                 {selectedIds.size > 0 && (
                   <button
                     onClick={handleDeleteSelected}
-                    className="px-4 py-2 bg-destructive text-white rounded-full hover:opacity-90 active:scale-95 transition-all text-sm font-medium"
+                    className="px-3 py-1.5 text-sm bg-destructive text-white rounded-full hover:opacity-90 active:scale-95 transition-all font-medium"
                   >
                     {t('transactionsDeleteSelected', { count: String(selectedIds.size) })}
                   </button>
                 )}
                 <button
                   onClick={toggleSelectMode}
-                  className="px-4 py-2 border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all text-sm"
+                  className="px-3 py-1.5 text-sm border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all"
                 >
                   {t('transactionsCancelSelect')}
                 </button>
@@ -409,13 +413,13 @@ export default function TransactionsPage() {
               <>
                 <button
                   onClick={toggleSelectMode}
-                  className="px-4 py-2 border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all text-sm"
+                  className="px-3 py-1.5 text-sm border border-border rounded-full hover:bg-background-surface-hover active:scale-95 transition-all"
                 >
                   {t('transactionsSelect')}
                 </button>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
+                  className="px-3 py-1.5 text-sm nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
                 >
                   {t('newTransaction')}
                 </button>
@@ -648,6 +652,26 @@ export default function TransactionsPage() {
                   </div>
                 )}
 
+                {/* Transfer Target Account */}
+                {formData.type === 'transfer' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">{t('txTargetAccount')}</label>
+                    <select
+                      value={formData.transferToAccountId}
+                      onChange={(e) => setFormData({ ...formData, transferToAccountId: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">{t('txSelectTargetAccount') || t('txSelectAccount')}</option>
+                      {accounts
+                        .filter(a => String(a.id) !== formData.accountId)
+                        .map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Date */}
                 <div>
                   <label className="block text-sm font-medium mb-2">{t('txDate')}</label>
@@ -683,8 +707,8 @@ export default function TransactionsPage() {
                     {t('saveAndAddAnother')}
                   </button>
                 )}
-                {/* Spacer for bottom padding */}
-                <div style={{ height: '20px' }} />
+                {/* Spacer for bottom nav + safe area */}
+                <div style={{ height: '80px' }} />
               </form>
             </div>
           </div>

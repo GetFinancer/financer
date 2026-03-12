@@ -1457,8 +1457,8 @@ export default function Dashboard() {
                 {t('dashboardApplyToFuture')}
               </button>
 
-              {/* Spacer for bottom padding */}
-              <div style={{ height: '40px' }} />
+              {/* Spacer for bottom nav + safe area */}
+              <div style={{ height: '80px' }} />
             </div>
           </div>
         </div>
@@ -1736,8 +1736,8 @@ export default function Dashboard() {
                 </button>
               )}
 
-              {/* Spacer for bottom padding */}
-              <div style={{ height: '20px' }} />
+              {/* Spacer for bottom nav + safe area */}
+              <div style={{ height: '80px' }} />
             </form>
           </div>
         </div>
