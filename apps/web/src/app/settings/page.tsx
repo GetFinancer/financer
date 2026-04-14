@@ -880,7 +880,7 @@ export default function SettingsPage() {
               {t('navDocumentation')}
             </a>
             <a
-              href="https://financer.getbugio.com"
+              href="https://bugsfinancer.itwtserv.ovh"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-background border border-border rounded-md hover:bg-background-surface-hover transition-colors"

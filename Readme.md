@@ -35,7 +35,7 @@ A self or cloud-hosted Progressive Web App (PWA) for personal finance management
 ### Links
 
 - [Home](https://getfinancer.com) — Financer project homepage
-- [Bugs/Features](https://financer.getbugio.com) — If you find a bug or want to request a new Feature
+- [Bugs/Features](https://bugsfinancer.itwtserv.ovh) — If you find a bug or want to request a new Feature
 - [Documentation](https://doc.getfinancer.com) — Learn how to use Financer
 
 ## Project Structure
@@ -150,15 +150,15 @@ coming soon
 ## Contributing
 
 You want to contribute to this repository? This is so great!
-The best way to start is to [open a new ticket](https://financer.getbugio.com) for bugs or feature requests or a discussion.
+The best way to start is to [open a new ticket](https://bugsfinancer.itwtserv.ovh) for bugs or feature requests or a discussion.
 
 In case you want to contribute, but you wouldn't know how, here are some suggestions:
 
 - Spread the word: Please [write a testimonial](...review Link coming soon) , vote for Financer on any software platform, you can toot or tweet about it, share it on LinkedIn, Reddit and any other social media platform!
 - Translate Financer into your language, or help to improve the existing translations, many languages look for a contributor
 - Answer questions: You know the answer to another user's problem? Share your knowledge.
-- Something can be done better? An essential feature is missing? Create a [feature request](https://financer.getbugio.com)
-- Report [bugs](https://financer.getbugio.com) makes Financer better for everyone.
+- Something can be done better? An essential feature is missing? Create a [feature request](https://bugsfinancer.itwtserv.ovh)
+- Report [bugs](https://bugsfinancer.itwtserv.ovh) makes Financer better for everyone.
 - You don't have to be programmer, the documentation and translation could always use some attention.
 - Sponsor the project: free software costs money to create!
 

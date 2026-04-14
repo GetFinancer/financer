@@ -134,7 +134,7 @@ export function BottomNav() {
           </a>
 
           <a
-            href="https://financer.getbugio.com"
+            href="https://bugsfinancer.itwtserv.ovh"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-background-surface-hover transition-colors"
