@@ -232,7 +232,7 @@ export function Sidebar({ isOpen, onToggle, tenantStatus }: SidebarProps) {
 
         {/* Feedback */}
         <a
-          href="https://financer.getbugio.com"
+          href="https://bugsfinancer.itwtserv.ovh"
           target="_blank"
           rel="noopener noreferrer"
           title={!isOpen ? t('navFeedback') : undefined}
