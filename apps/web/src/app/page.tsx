@@ -690,7 +690,10 @@ export default function Dashboard() {
           {/* Financial Overview Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{t('dashboardFinancialOverview')}</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-primary" />
+                <h2 className="text-lg font-semibold">{t('dashboardFinancialOverview')}</h2>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => setShowCardSettings(!showCardSettings)}
@@ -891,7 +894,10 @@ export default function Dashboard() {
           {/* Planned Transactions Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-primary" />
+                <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
+              </div>
               <Link href="/recurring" className="text-sm text-primary hover:underline">
                 {t('dashboardManageRecurring')}
               </Link>
@@ -902,23 +908,27 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={goToPreviousMonth}
-                  className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="flex items-center justify-center w-10 h-10 hover:bg-background-surface-hover rounded-lg transition-colors text-muted-foreground hover:text-foreground active:scale-95"
                 >
-                  ←
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
 
                 <button
                   onClick={() => setShowMonthPicker(!showMonthPicker)}
-                  className="px-4 py-2 font-medium hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="px-4 py-2 font-semibold hover:bg-background-surface-hover rounded-lg transition-colors"
                 >
                   {monthNames[selectedMonth - 1]} {selectedYear}
                 </button>
 
                 <button
                   onClick={goToNextMonth}
-                  className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="flex items-center justify-center w-10 h-10 hover:bg-background-surface-hover rounded-lg transition-colors text-muted-foreground hover:text-foreground active:scale-95"
                 >
-                  →
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
 
@@ -1023,9 +1033,14 @@ export default function Dashboard() {
             {loadingInstances ? (
               <div className="glass-card p-6 text-center text-muted-foreground">{t('loading')}</div>
             ) : instances.length === 0 && creditCardBills.length === 0 ? (
-              <div className="glass-card p-6 text-center text-muted-foreground">
-                <p>{t('dashboardNoPlannedTransactions')}</p>
-                <Link href="/recurring" className="text-primary hover:underline">
+              <div className="glass-card p-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="text-foreground font-medium mb-1">{t('dashboardNoPlannedTransactions')}</p>
+                <Link href="/recurring" className="text-sm text-primary hover:underline">
                   {t('dashboardCreateRecurring')}
                 </Link>
               </div>
@@ -1159,8 +1174,19 @@ export default function Dashboard() {
                     .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
                     .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
                     .length === 0 && (
-                    <div className="glass-card p-4 text-center text-muted-foreground text-sm">
-                      {recurringSearch ? t('dashboardNoExpensesSearch', { term: recurringSearch }) : hideCompleted ? t('dashboardAllExpensesDone') : t('dashboardNoExpensesPlanned')}
+                    <div className="glass-card p-5 text-center">
+                      {hideCompleted ? (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-income/10 flex items-center justify-center mx-auto mb-2">
+                            <svg className="w-4 h-4 text-income" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-foreground font-medium">{t('dashboardAllExpensesDone')}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{recurringSearch ? t('dashboardNoExpensesSearch', { term: recurringSearch }) : t('dashboardNoExpensesPlanned')}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1248,8 +1274,19 @@ export default function Dashboard() {
                     .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
                     .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
                     .length === 0 && (
-                    <div className="glass-card p-4 text-center text-muted-foreground text-sm">
-                      {recurringSearch ? t('dashboardNoIncomeSearch', { term: recurringSearch }) : hideCompleted ? t('dashboardAllIncomeReceived') : t('dashboardNoIncomePlanned')}
+                    <div className="glass-card p-5 text-center">
+                      {hideCompleted ? (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-income/10 flex items-center justify-center mx-auto mb-2">
+                            <svg className="w-4 h-4 text-income" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-foreground font-medium">{t('dashboardAllIncomeReceived')}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{recurringSearch ? t('dashboardNoIncomeSearch', { term: recurringSearch }) : t('dashboardNoIncomePlanned')}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1327,28 +1364,37 @@ export default function Dashboard() {
           {/* Recent Transactions */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-secondary" />
                 <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
+              </div>
+              <div className="flex items-center gap-3">
                 <select
                   value={transactionLimit}
                   onChange={(e) => setTransactionLimit(Number(e.target.value))}
-                  className="px-2 py-1 text-sm rounded border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="text-xs text-muted-foreground rounded border border-border/50 bg-transparent px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                 </select>
+                <Link href="/transactions" className="text-sm text-primary hover:underline">
+                  {t('dashboardShowAll')}
+                </Link>
               </div>
-              <Link href="/transactions" className="text-sm text-primary hover:underline">
-                {t('dashboardShowAll')}
-              </Link>
             </div>
             <div className="glass-card divide-y divide-border/50">
               {recentTransactions.length === 0 ? (
-                <p className="p-6 text-muted-foreground text-center">
-                  {t('dashboardNoTransactionsMonth')}
-                </p>
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <p className="text-foreground font-medium mb-1">{t('dashboardNoTransactionsMonth')}</p>
+                  <button onClick={openNewTransaction} className="text-sm text-primary hover:underline">{t('dashboardNewTransaction')}</button>
+                </div>
               ) : (
                 recentTransactions.map((transaction) => (
                   <div key={transaction.id} className="p-4 flex items-center gap-3 hover:bg-background-surface-hover active:bg-background-surface-hover">
