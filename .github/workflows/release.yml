@@ -11,7 +11,7 @@ on:
 jobs:
   release:
     name: Create Release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
@@ -31,7 +31,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

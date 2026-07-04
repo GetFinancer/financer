@@ -261,6 +261,7 @@ const en: Record<TranslationKey, string> = {
   recurringActive: 'Active',
   recurringInactive: 'Inactive',
   recurringConfirmDelete: 'Really delete this recurring transaction?',
+  recurringConfirmDeleteException: 'Really delete this exception?',
   recurringName: 'Name',
   recurringNamePlaceholder: 'e.g. Rent, Salary...',
   recurringNoAccount: 'No account',

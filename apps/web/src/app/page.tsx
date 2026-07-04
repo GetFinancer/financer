@@ -154,6 +154,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadInstances();
+    loadDashboard();
   }, [selectedYear, selectedMonth]);
 
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function Dashboard() {
 
   async function loadDashboard() {
     try {
-      const data = await api.getDashboardSummary();
+      const data = await api.getDashboardSummary(selectedYear, selectedMonth);
       setSummary(data);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -444,9 +445,11 @@ export default function Dashboard() {
         };
         await api.createTransaction(payload);
       }
-      // Keep form open — reset only amount, description, category
+      // Keep form open — reset fields, restore default account
+      const defaultAccount = accounts.find(a => a.isDefault) || accounts[0];
       setTxFormData(prev => ({
         ...prev,
+        accountId: defaultAccount ? String(defaultAccount.id) : prev.accountId,
         categoryId: '',
         amount: '',
         description: '',

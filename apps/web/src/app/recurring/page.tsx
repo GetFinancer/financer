@@ -270,19 +270,25 @@ export default function RecurringPage() {
     }
   }
 
-  async function handleDeleteException() {
+  function handleDeleteException() {
     if (!viewingOccurrences || !editingOccurrence?.exception) return;
 
-    try {
-      await api.deleteRecurringException(
-        viewingOccurrences.id,
-        editingOccurrence.exception.id
-      );
-      closeExceptionEdit();
-      await handleViewOccurrences(viewingOccurrences);
-    } catch (err: any) {
-      setError(err.message || t('errorDeleting'));
-    }
+    setConfirmDialog({
+      message: t('recurringConfirmDeleteException'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await api.deleteRecurringException(
+            viewingOccurrences.id,
+            editingOccurrence!.exception!.id
+          );
+          closeExceptionEdit();
+          await handleViewOccurrences(viewingOccurrences);
+        } catch (err: any) {
+          setError(err.message || t('errorDeleting'));
+        }
+      },
+    });
   }
 
   async function handleApplyToFuture() {

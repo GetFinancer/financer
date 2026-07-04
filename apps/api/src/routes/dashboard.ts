@@ -8,11 +8,13 @@ export const dashboardRouter = Router();
 dashboardRouter.use(authMiddleware);
 
 // Get dashboard summary
-dashboardRouter.get('/summary', (_req, res) => {
-  // Get current month boundaries
+dashboardRouter.get('/summary', (req, res) => {
+  // Use year/month from query params if provided, otherwise use server's current month
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const year = parseInt(req.query.year as string, 10) || now.getFullYear();
+  const month = parseInt(req.query.month as string, 10) || (now.getMonth() + 1);
+  const startOfMonth = new Date(year, month - 1, 1).toISOString().split('T')[0];
+  const endOfMonth = new Date(year, month, 0).toISOString().split('T')[0];
 
   // Get accounts with balances
   const accounts = db.prepare(`

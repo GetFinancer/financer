@@ -259,6 +259,7 @@ const de = {
   recurringActive: 'Aktiv',
   recurringInactive: 'Inaktiv',
   recurringConfirmDelete: 'Wiederkehrende Transaktion wirklich löschen?',
+  recurringConfirmDeleteException: 'Ausnahme wirklich löschen?',
   recurringName: 'Name',
   recurringNamePlaceholder: 'z.B. Miete, Gehalt...',
   recurringNoAccount: 'Kein Konto',

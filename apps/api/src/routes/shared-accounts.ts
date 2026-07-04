@@ -410,8 +410,39 @@ sharedAccountsRouter.post('/:uuid/transactions', async (req, res) => {
       )
     );
 
+    const txId = result.lastInsertRowid as number;
+
+    // Auto-create equal split so debt is tracked immediately
+    const allMembers = [sa.ownerTenant, ...sa.members.map(m => m.memberTenant)];
+    if (allMembers.length > 1) {
+      await inOwnerDb(sa.ownerTenant, () => {
+        const perPerson = Math.round((amount / allMembers.length) * 100) / 100;
+        const splitResult = db.prepare(
+          'INSERT INTO shared_splits (transaction_id, shared_uuid, split_type) VALUES (?, ?, ?)'
+        ).run(txId, uuid, 'equal');
+        const splitId = splitResult.lastInsertRowid;
+
+        let sumOthers = 0;
+        for (const member of allMembers) {
+          if (member === tenant) continue;
+          db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, member, perPerson);
+          sumOthers += perPerson;
+        }
+
+        const payerAmount = Math.max(0, Math.round((amount - sumOthers) * 100) / 100);
+        db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, tenant, payerAmount);
+        db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(splitId, tenant);
+
+        const desc = description ? `Eigenanteil / Own share: ${description}` : 'Eigenanteil / Own share';
+        const payerTxResult = db.prepare(
+          `INSERT INTO transactions (account_id, amount, type, description, date, added_by) VALUES (?, ?, 'income', ?, ?, ?)`
+        ).run(sa.accountId, payerAmount, desc, date, tenant);
+        db.prepare('UPDATE shared_splits SET payer_settlement_tx_id = ? WHERE id = ?').run(payerTxResult.lastInsertRowid, splitId);
+      });
+    }
+
     const newTx = await inOwnerDb(sa.ownerTenant, () =>
-      db.prepare('SELECT * FROM transactions WHERE id = ?').get(result.lastInsertRowid) as any
+      db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId) as any
     );
 
     res.status(201).json({ success: true, data: newTx });
@@ -842,7 +873,10 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
     const relevantUuids = Object.keys(uuidCount).filter(u => uuidCount[u] >= 2);
 
     // Settle all mutual shares across all related accounts and create per-share income txs
+    let amountRemaining = Math.round(netAmount * 100) / 100;
+
     for (const sharedUuid of relevantUuids) {
+      if (creditorTenant && amountRemaining <= 0) break;
       const sharedAcct = getSharedAccount(sharedUuid);
       if (!sharedAcct) continue;
 
@@ -855,30 +889,50 @@ sharedAccountsRouter.post('/:uuid/settle', async (req, res) => {
         `).all(sharedAcct.ownerTenant, sharedUuid) as { id: number; payer: string }[];
 
         for (const split of splits) {
+          if (creditorTenant && amountRemaining <= 0) break;
+
           // Debtor (targetTenant) owes creditor: creditor is payer, debtor has unsettled share
           if (creditorTenant && split.payer === creditorTenant) {
             const share = db.prepare(
-              'SELECT amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
-            ).get(split.id, targetTenant) as { amount: number } | undefined;
+              'SELECT id, amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
+            ).get(split.id, targetTenant) as { id: number; amount: number } | undefined;
             if (share) {
-              db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, targetTenant);
+              const toSettle = Math.round(Math.min(amountRemaining, share.amount) * 100) / 100;
+              const remainder = Math.round((share.amount - toSettle) * 100) / 100;
+
+              if (remainder > 0) {
+                // Partial: shrink existing share to settled portion, insert remainder as new unsettled share
+                db.prepare('UPDATE shared_split_shares SET amount = ?, settled = 1 WHERE id = ?').run(toSettle, share.id);
+                db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount, settled) VALUES (?, ?, ?, 0)').run(split.id, targetTenant, remainder);
+              } else {
+                db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE id = ?').run(share.id);
+              }
               db.prepare(`INSERT INTO transactions (account_id, amount, type, description, date, added_by)
                 VALUES (?, ?, 'income', ?, ?, ?)`)
-                .run(sharedAcct.accountId, share.amount, `Schuldenausgleich / Settlement (${targetTenant})`, settleDate, tenant);
+                .run(sharedAcct.accountId, toSettle, `Schuldenausgleich / Settlement (${targetTenant})`, settleDate, tenant);
+              amountRemaining = Math.round((amountRemaining - toSettle) * 100) / 100;
             }
           }
 
           // Mutual debt: creditor owes debtor (targetTenant is payer, creditor has unsettled share)
-          // These cancel out against the above, enabling netting
           if (creditorTenant && split.payer === targetTenant) {
             const share = db.prepare(
-              'SELECT amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
-            ).get(split.id, creditorTenant) as { amount: number } | undefined;
+              'SELECT id, amount FROM shared_split_shares WHERE split_id = ? AND tenant = ? AND settled = 0'
+            ).get(split.id, creditorTenant) as { id: number; amount: number } | undefined;
             if (share) {
-              db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(split.id, creditorTenant);
+              const toSettle = Math.round(Math.min(amountRemaining, share.amount) * 100) / 100;
+              const remainder = Math.round((share.amount - toSettle) * 100) / 100;
+
+              if (remainder > 0) {
+                db.prepare('UPDATE shared_split_shares SET amount = ?, settled = 1 WHERE id = ?').run(toSettle, share.id);
+                db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount, settled) VALUES (?, ?, ?, 0)').run(split.id, creditorTenant, remainder);
+              } else {
+                db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE id = ?').run(share.id);
+              }
               db.prepare(`INSERT INTO transactions (account_id, amount, type, description, date, added_by)
                 VALUES (?, ?, 'income', ?, ?, ?)`)
-                .run(sharedAcct.accountId, share.amount, `Schuldenausgleich / Settlement (${creditorTenant})`, settleDate, tenant);
+                .run(sharedAcct.accountId, toSettle, `Schuldenausgleich / Settlement (${creditorTenant})`, settleDate, tenant);
+              amountRemaining = Math.round((amountRemaining - toSettle) * 100) / 100;
             }
           }
 
