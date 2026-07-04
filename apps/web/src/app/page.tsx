@@ -806,7 +806,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardTotalBalance')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                     {formatCurrency(summary.totalBalance, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -816,7 +816,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardMonthlyIncome')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none text-income">
+                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-income">
                     {formatCurrency(summary.monthlyIncome, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -826,7 +826,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardMonthlyExpenses')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none text-expense">
+                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-expense">
                     {formatCurrency(summary.monthlyExpenses, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -836,7 +836,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardRemaining')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(remainingBudget, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -851,7 +851,7 @@ export default function Dashboard() {
                         {account.name}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
@@ -867,7 +867,7 @@ export default function Dashboard() {
                         {sa.accountName}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(sa.balance, 'EUR', numberLocale)}
                     </p>
                   </div>

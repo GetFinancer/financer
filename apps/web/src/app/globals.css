@@ -135,15 +135,15 @@
     --primary-active: 224 76% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 258 90% 66%;
-    --secondary-hover: 262 83% 58%;
-    --secondary-active: 263 70% 50%;
+    --secondary: 221 83% 53%;
+    --secondary-hover: 221 83% 47%;
+    --secondary-active: 224 76% 42%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 240 6% 10%;
     --muted-foreground: 218 11% 65%;
 
-    --accent: 258 90% 66%;
+    --accent: 221 83% 53%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -164,12 +164,12 @@
     --error: 0 84% 60%;
 
     /* Income/Expense */
-    --income: 142 71% 45%;
+    --income: 43 96% 56%;
     --expense: 0 84% 60%;
 
     /* Chart Colors */
     --chart-primary: 217 91% 60%;
-    --chart-secondary: 258 90% 66%;
+    --chart-secondary: 43 96% 56%;
     --chart-success: 142 71% 45%;
     --chart-muted: 215 16% 47%;
     --chart-grid: 240 5% 17%;
@@ -212,15 +212,15 @@
     --primary-active: 224 76% 43%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 258 90% 60%;
-    --secondary-hover: 262 83% 52%;
-    --secondary-active: 263 70% 45%;
+    --secondary: 221 83% 48%;
+    --secondary-hover: 221 83% 42%;
+    --secondary-active: 224 76% 37%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 14% 96%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 258 90% 60%;
+    --accent: 221 83% 48%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 55%;
@@ -239,12 +239,12 @@
     --error: 0 84% 55%;
 
     /* Income/Expense */
-    --income: 142 71% 40%;
+    --income: 38 92% 45%;
     --expense: 0 84% 55%;
 
     /* Chart Colors */
     --chart-primary: 217 91% 55%;
-    --chart-secondary: 258 90% 60%;
+    --chart-secondary: 38 92% 45%;
     --chart-success: 142 71% 40%;
     --chart-muted: 215 16% 57%;
     --chart-grid: 220 13% 87%;
@@ -279,7 +279,14 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans), system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Tabular numbers — prevents layout shifts when amounts change */
+  .font-mono, .tabular-nums, input[type="number"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 
   /* Custom scrollbar for dark theme */
