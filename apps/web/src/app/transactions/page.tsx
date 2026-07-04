@@ -811,7 +811,7 @@ export default function TransactionsPage() {
 
                 {/* Amount & Actions */}
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`font-semibold whitespace-nowrap ${
+                  <span className={`font-semibold whitespace-nowrap font-mono ${
                     tx.type === 'income' ? 'text-income' :
                     tx.type === 'transfer' ? 'text-primary' :
                     'text-expense'

@@ -21,7 +21,7 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="bg-background border border-border rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-5"
+        className="glass-card-elevated p-6 w-full max-w-sm space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-sm leading-relaxed">{message}</p>

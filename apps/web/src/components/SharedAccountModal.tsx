@@ -250,7 +250,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="glass-card-elevated w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {confirmDialog && (
@@ -316,7 +316,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                     <div className="flex items-center justify-between py-2 border-b border-border/50">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                          <span className={`text-sm font-medium font-mono ${tx.type === 'income' ? 'text-income' : 'text-expense'}`}>
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, undefined, numberLocale)}
                           </span>
                           <span className="text-sm truncate">{translateDesc(tx.description) || tx.categoryName}</span>
@@ -400,13 +400,13 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                                 {/* Amount row */}
                                 <div className="pl-9">
                                   {isLocked ? (
-                                    <div className="text-sm font-semibold text-right">
+                                    <div className="text-sm font-semibold text-right font-mono">
                                       {formatCurrency(share!.amount, undefined, numberLocale)}
                                     </div>
                                   ) : isPayer ? (
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground italic">{t('sharedAccountsSplitRemainder')}</span>
-                                      <span className="text-sm font-medium text-muted-foreground">
+                                      <span className="text-sm font-medium text-muted-foreground font-mono">
                                         {draftAmt ? formatCurrency(Number(draftAmt), undefined, numberLocale) : '—'}
                                       </span>
                                     </div>
@@ -435,7 +435,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
                                       )}
                                     </div>
                                   ) : (
-                                    <div className="text-sm text-right">
+                                    <div className="text-sm text-right font-mono">
                                       {share ? formatCurrency(share.amount, undefined, numberLocale) : '—'}
                                     </div>
                                   )}
@@ -550,7 +550,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         {/* Invite Modal */}
         {showInvite && invite && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6 rounded-xl">
-            <div className="bg-background border border-border rounded-lg p-6 w-full max-w-sm space-y-4">
+            <div className="glass-card-elevated p-6 w-full max-w-sm space-y-4">
               <h3 className="font-semibold">{t('sharedAccountsInviteCreate')}</h3>
               <p className="text-xs text-muted-foreground">{t('sharedAccountsInviteTokenHint')}</p>
               <a

@@ -13,6 +13,66 @@ export interface VersionNotes {
 
 export const releaseNotes: VersionNotes[] = [
   {
+    version: '2.0.0',
+    date: '2026-07',
+    new: [
+      {
+        de: 'Komplett überarbeitetes Design — Premium Dark-Fintech-Look mit Glassmorphism, Neon-Akzenten und tiefen Schwarz-Navy-Tönen',
+        en: 'Fully redesigned UI — premium dark fintech look with glassmorphism, neon accents, and deep black-navy tones',
+      },
+      {
+        de: 'Dashboard-Layout neu: Zwei-Spalten-Grid mit Geplante Buchungen und Letzte Transaktionen nebeneinander',
+        en: 'New dashboard layout: two-column grid with Planned Transactions and Recent Transactions side by side',
+      },
+      {
+        de: 'Farbige Glas-Container je Sektion — Amber für Finanzübersicht, Blau für Geplante Buchungen, Lila für Letzte Transaktionen',
+        en: 'Colored glass containers per section — amber for Financial Overview, blue for Planned Transactions, purple for Recent Transactions',
+      },
+      {
+        de: 'Avatar-Kreis als Checkbox — Buchstabe des Namens als visuelles Toggle, Klick markiert die Buchung als erledigt',
+        en: 'Avatar circle as checkbox — first letter of name as visual toggle, tap marks the booking as done',
+      },
+      {
+        de: 'Globale Suche in der Topbar — durchsucht Transaktionen, Konten und Daueraufträge gleichzeitig',
+        en: 'Global search in topbar — searches transactions, accounts, and recurring entries simultaneously',
+      },
+      {
+        de: 'Dark/Light-Umschalter direkt in der Topbar (Desktop) und im Header (Mobil) — kein Umweg mehr über Einstellungen',
+        en: 'Dark/Light toggle directly in the topbar (desktop) and header (mobile) — no more detour via settings',
+      },
+    ],
+    improved: [
+      {
+        de: 'Alle Modals und Dialoge im neuen Premium-Glass-Design mit Gradient-Hintergrund und Shimmer-Effekt',
+        en: 'All modals and dialogs in the new premium glass design with gradient background and shimmer effect',
+      },
+      {
+        de: 'Light Mode überarbeitet — blaustichiger Off-White-Hintergrund, weiße Cards mit Elevation-Schatten und subtilen Farbakzenten',
+        en: 'Improved light mode — blue-tinted off-white background, white cards with elevation shadows and subtle color accents',
+      },
+      {
+        de: 'Geplante Buchungen: Einzelne Zeilen statt separater Karten — kompaktere Liste mit Dividers',
+        en: 'Planned Transactions: individual rows instead of separate cards — more compact list with dividers',
+      },
+      {
+        de: 'KPI-Karten mit Gradient-Hintergrund, Shimmer-Inset und Neon-Hover-Effekt',
+        en: 'KPI cards with gradient background, shimmer inset, and neon hover effect',
+      },
+      {
+        de: 'Sidebar mit tiefem Dunkelblau-Gradient und stärkerer visueller Trennung vom Hauptbereich',
+        en: 'Sidebar with deep dark-blue gradient and stronger visual separation from the main area',
+      },
+      {
+        de: 'Kategorie-Badge bei Transaktionen auf dem Dashboard sichtbar',
+        en: 'Category badge visible on transactions in the dashboard',
+      },
+      {
+        de: 'Eingabefelder in Modals haben eigene Hintergrundfarbe — besser lesbar auf dunklem Untergrund',
+        en: 'Input fields in modals have their own background color — easier to read on dark backgrounds',
+      },
+    ],
+  },
+  {
     version: '1.6.5',
     date: '2026-03',
     new: [

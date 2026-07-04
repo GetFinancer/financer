@@ -686,11 +686,14 @@ export default function Dashboard() {
       ) : !summary ? (
         <div className="text-center py-8 text-muted-foreground">{t('dashboardErrorLoading')}</div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-6">
           {/* Financial Overview Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{t('dashboardFinancialOverview')}</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-primary" />
+                <h2 className="text-lg font-semibold">{t('dashboardFinancialOverview')}</h2>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => setShowCardSettings(!showCardSettings)}
@@ -800,13 +803,14 @@ export default function Dashboard() {
             </div>
 
             {/* Unified Card Grid */}
+            <div className="glass-card glass-card-amber overflow-hidden glow-amber p-5">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {cardVisibility.totalBalance && (
                 <div className="kpi-card">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardTotalBalance')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                     {formatCurrency(summary.totalBalance, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -816,7 +820,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardMonthlyIncome')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none text-income">
+                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-income">
                     {formatCurrency(summary.monthlyIncome, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -826,7 +830,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardMonthlyExpenses')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none text-expense">
+                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-expense">
                     {formatCurrency(summary.monthlyExpenses, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -836,7 +840,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
                     {t('dashboardRemaining')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
+                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(remainingBudget, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -851,7 +855,7 @@ export default function Dashboard() {
                         {account.name}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
@@ -867,16 +871,17 @@ export default function Dashboard() {
                         {sa.accountName}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(sa.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
                 ))}
             </div>
+            </div>{/* closes glass-card glow-amber */}
           </section>
 
           {/* Quick Add Button */}
-          <div className="flex justify-center">
+          <div className="flex justify-center mb-6">
             <button
               onClick={openNewTransaction}
               className="flex items-center gap-2 px-6 py-3 nav-item-active rounded-full font-semibold shadow-md hover:opacity-90 active:scale-95 transition-all duration-150"
@@ -888,37 +893,50 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Planned Transactions Section */}
+          {/* Two-column layout */}
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
+
+          {/* Left: Geplante Buchungen */}
+          <div className="xl:col-span-3">
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
+          <div className="glass-card glass-card-blue overflow-hidden glow-blue">
+            {/* Section Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-primary" />
+                <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
+              </div>
               <Link href="/recurring" className="text-sm text-primary hover:underline">
                 {t('dashboardManageRecurring')}
               </Link>
             </div>
 
             {/* Month Selector */}
-            <div className="glass-card p-4 mb-4">
+            <div className="px-5 py-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <button
                   onClick={goToPreviousMonth}
-                  className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="flex items-center justify-center w-10 h-10 hover:bg-background-surface-hover rounded-lg transition-colors text-muted-foreground hover:text-foreground active:scale-95"
                 >
-                  ←
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
 
                 <button
                   onClick={() => setShowMonthPicker(!showMonthPicker)}
-                  className="px-4 py-2 font-medium hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="px-4 py-2 font-semibold hover:bg-background-surface-hover rounded-lg transition-colors"
                 >
                   {monthNames[selectedMonth - 1]} {selectedYear}
                 </button>
 
                 <button
                   onClick={goToNextMonth}
-                  className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="flex items-center justify-center w-10 h-10 hover:bg-background-surface-hover rounded-lg transition-colors text-muted-foreground hover:text-foreground active:scale-95"
                 >
-                  →
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
 
@@ -962,7 +980,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
                 <div>
                   <p className="text-xs text-muted-foreground">{t('dashboardPlannedIncome')}</p>
-                  <p className="text-lg font-semibold text-income">
+                  <p className="text-lg font-semibold text-income font-mono">
                     {formatCurrency(plannedIncome, 'EUR', numberLocale)}
                     {completedIncome > 0 && (
                       <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -973,7 +991,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t('dashboardPlannedExpenses')}</p>
-                  <p className="text-lg font-semibold text-expense">
+                  <p className="text-lg font-semibold text-expense font-mono">
                     {formatCurrency(plannedExpenses, 'EUR', numberLocale)}
                     {completedExpenses > 0 && (
                       <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -1020,12 +1038,18 @@ export default function Dashboard() {
             </div>
 
             {/* Recurring Instances and Credit Card Bills - Two Column Layout */}
+            <div className="p-5">
             {loadingInstances ? (
-              <div className="glass-card p-6 text-center text-muted-foreground">{t('loading')}</div>
+              <div className="rounded-xl border border-border/50 p-6 text-center text-muted-foreground">{t('loading')}</div>
             ) : instances.length === 0 && creditCardBills.length === 0 ? (
-              <div className="glass-card p-6 text-center text-muted-foreground">
-                <p>{t('dashboardNoPlannedTransactions')}</p>
-                <Link href="/recurring" className="text-primary hover:underline">
+              <div className="rounded-xl border border-border/50 p-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="text-foreground font-medium mb-1">{t('dashboardNoPlannedTransactions')}</p>
+                <Link href="/recurring" className="text-sm text-primary hover:underline">
                   {t('dashboardCreateRecurring')}
                 </Link>
               </div>
@@ -1048,79 +1072,81 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
-                  {/* Credit Card Bills */}
-                  {creditCardBills
-                    .filter(bill => !hideCompleted || !bill.completed)
-                    .filter(bill => !recurringSearch || bill.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
-                    .map((bill) => (
-                    <div
-                      key={`cc-${bill.id}`}
-                      className={`glass-card p-4 ${bill.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleCreditCardBill(bill.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            bill.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {bill.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${bill.completed ? 'line-through' : ''}`}>
-                              💳 {bill.accountName}
-                            </p>
-                            <p className="font-semibold text-expense whitespace-nowrap">
-                              -{formatCurrency(bill.amount, 'EUR', numberLocale)}
-                            </p>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {t('dashboardDue')} {formatDate(bill.paymentDate, numberLocale)}
-                            {bill.linkedAccountName && (
-                              <span className="ml-2 text-xs text-primary">→ {bill.linkedAccountName}</span>
+                  {/* Ausgaben — grouped list */}
+                  {(creditCardBills.filter(b => !hideCompleted || !b.completed).filter(b => !recurringSearch || b.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0 ||
+                    instances.filter(i => i.type === 'expense' && (!hideCompleted || !i.completed)).filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0) && (
+                    <div className="rounded-xl border border-border/50 divide-y divide-border/40 overflow-hidden">
+                      {creditCardBills
+                        .filter(bill => !hideCompleted || !bill.completed)
+                        .filter(bill => !recurringSearch || bill.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
+                        .map((bill) => (
+                        <div key={`cc-${bill.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${bill.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleCreditCardBill(bill.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              bill.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
+                            }`}
+                          >
+                            {bill.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              (bill.accountName || 'K').charAt(0).toUpperCase()
                             )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Expense Instances */}
-                  {sortInstances(
-                    instances
-                    .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
-                    expenseSort
-                  ).map((instance) => (
-                    <div
-                      key={`ri-${instance.id}`}
-                      className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleInstance(instance.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            instance.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {instance.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${instance.completed ? 'line-through' : ''}`}>
-                              {instance.name}
-                              {instance.isModified && (
-                                <span className="ml-2 text-xs text-primary">✎</span>
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${bill.completed ? 'line-through' : ''}`}>
+                              {bill.accountName}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {t('dashboardDue')} {formatDate(bill.paymentDate, numberLocale)}
+                              {bill.linkedAccountName && (
+                                <span className="ml-1.5 text-xs text-primary">→ {bill.linkedAccountName}</span>
                               )}
                             </p>
-                            <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-expense whitespace-nowrap">
+                          </div>
+                          <span className="font-semibold text-expense whitespace-nowrap font-mono flex-shrink-0">
+                            -{formatCurrency(bill.amount, 'EUR', numberLocale)}
+                          </span>
+                        </div>
+                      ))}
+                      {sortInstances(
+                        instances
+                        .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
+                        .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                        expenseSort
+                      ).map((instance) => (
+                        <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleInstance(instance.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              instance.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
+                            }`}
+                          >
+                            {instance.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              instance.name.charAt(0).toUpperCase()
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${instance.completed ? 'line-through' : ''}`}>
+                              {instance.name}
+                              {instance.isModified && <span className="ml-1.5 text-xs text-primary">✎</span>}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {formatDate(instance.dueDate, numberLocale)}
+                              {instance.accountName && (
+                                <span className="ml-1.5 text-xs text-primary">• {instance.accountName}</span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="font-semibold text-expense whitespace-nowrap font-mono">
                                 -{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1129,14 +1155,6 @@ export default function Dashboard() {
                                 </p>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(instance.dueDate, numberLocale)}
-                              {instance.accountName && (
-                                <span className="ml-2 text-xs text-primary">• {instance.accountName}</span>
-                              )}
-                            </p>
                             <button
                               onClick={() => openEditInstance(instance)}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
@@ -1148,9 +1166,9 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                   {creditCardBills
                     .filter(b => !hideCompleted || !b.completed)
                     .filter(b => !recurringSearch || b.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
@@ -1159,8 +1177,19 @@ export default function Dashboard() {
                     .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
                     .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
                     .length === 0 && (
-                    <div className="glass-card p-4 text-center text-muted-foreground text-sm">
-                      {recurringSearch ? t('dashboardNoExpensesSearch', { term: recurringSearch }) : hideCompleted ? t('dashboardAllExpensesDone') : t('dashboardNoExpensesPlanned')}
+                    <div className="glass-card p-5 text-center">
+                      {hideCompleted ? (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-income/10 flex items-center justify-center mx-auto mb-2">
+                            <svg className="w-4 h-4 text-income" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-foreground font-medium">{t('dashboardAllExpensesDone')}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{recurringSearch ? t('dashboardNoExpensesSearch', { term: recurringSearch }) : t('dashboardNoExpensesPlanned')}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1182,38 +1211,45 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
-                  {sortInstances(
-                    instances
-                    .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
-                    incomeSort
-                  ).map((instance) => (
-                    <div
-                      key={`ri-${instance.id}`}
-                      className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleInstance(instance.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            instance.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {instance.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${instance.completed ? 'line-through' : ''}`}>
+                  {/* Einnahmen — grouped list */}
+                  {instances.filter(i => i.type === 'income' && (!hideCompleted || !i.completed)).filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0 && (
+                    <div className="rounded-xl border border-border/50 divide-y divide-border/40 overflow-hidden">
+                      {sortInstances(
+                        instances
+                        .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
+                        .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                        incomeSort
+                      ).map((instance) => (
+                        <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleInstance(instance.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              instance.completed ? 'bg-income text-white' : 'bg-income/20 text-income hover:bg-income/30'
+                            }`}
+                          >
+                            {instance.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              instance.name.charAt(0).toUpperCase()
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${instance.completed ? 'line-through' : ''}`}>
                               {instance.name}
-                              {instance.isModified && (
-                                <span className="ml-2 text-xs text-primary">✎</span>
+                              {instance.isModified && <span className="ml-1.5 text-xs text-primary">✎</span>}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {formatDate(instance.dueDate, numberLocale)}
+                              {instance.accountName && (
+                                <span className="ml-1.5 text-xs text-primary">• {instance.accountName}</span>
                               )}
                             </p>
-                            <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-income whitespace-nowrap">
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="font-semibold text-income whitespace-nowrap font-mono">
                                 +{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1222,14 +1258,6 @@ export default function Dashboard() {
                                 </p>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(instance.dueDate, numberLocale)}
-                              {instance.accountName && (
-                                <span className="ml-2 text-xs text-primary">• {instance.accountName}</span>
-                              )}
-                            </p>
                             <button
                               onClick={() => openEditInstance(instance)}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
@@ -1241,15 +1269,26 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                   {instances
                     .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
                     .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
                     .length === 0 && (
-                    <div className="glass-card p-4 text-center text-muted-foreground text-sm">
-                      {recurringSearch ? t('dashboardNoIncomeSearch', { term: recurringSearch }) : hideCompleted ? t('dashboardAllIncomeReceived') : t('dashboardNoIncomePlanned')}
+                    <div className="glass-card p-5 text-center">
+                      {hideCompleted ? (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-income/10 flex items-center justify-center mx-auto mb-2">
+                            <svg className="w-4 h-4 text-income" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-foreground font-medium">{t('dashboardAllIncomeReceived')}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{recurringSearch ? t('dashboardNoIncomeSearch', { term: recurringSearch }) : t('dashboardNoIncomePlanned')}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1288,7 +1327,7 @@ export default function Dashboard() {
                               )}
                             </p>
                             <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-primary whitespace-nowrap">
+                              <p className="font-semibold text-primary whitespace-nowrap font-mono">
                                 {formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1322,33 +1361,48 @@ export default function Dashboard() {
                 </div>
               )}
             </>)}
+            </div>{/* closes p-5 */}
+          </div>{/* closes glass-card */}
           </section>
+          </div>{/* closes xl:col-span-3 */}
 
+          {/* Right: Letzte Transaktionen */}
+          <div className="xl:col-span-2">
           {/* Recent Transactions */}
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
-                <select
-                  value={transactionLimit}
-                  onChange={(e) => setTransactionLimit(Number(e.target.value))}
-                  className="px-2 py-1 text-sm rounded border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
+            <div className="glass-card glass-card-purple overflow-hidden glow-purple">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-secondary" />
+                  <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={transactionLimit}
+                    onChange={(e) => setTransactionLimit(Number(e.target.value))}
+                    className="text-xs text-muted-foreground rounded border border-border/50 bg-transparent px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <Link href="/transactions" className="text-sm text-primary hover:underline">
+                    {t('dashboardShowAll')}
+                  </Link>
+                </div>
               </div>
-              <Link href="/transactions" className="text-sm text-primary hover:underline">
-                {t('dashboardShowAll')}
-              </Link>
-            </div>
-            <div className="glass-card divide-y divide-border/50">
+            <div className="divide-y divide-border/50">
               {recentTransactions.length === 0 ? (
-                <p className="p-6 text-muted-foreground text-center">
-                  {t('dashboardNoTransactionsMonth')}
-                </p>
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <p className="text-foreground font-medium mb-1">{t('dashboardNoTransactionsMonth')}</p>
+                  <button onClick={openNewTransaction} className="text-sm text-primary hover:underline">{t('dashboardNewTransaction')}</button>
+                </div>
               ) : (
                 recentTransactions.map((transaction) => (
                   <div key={transaction.id} className="p-4 flex items-center gap-3 hover:bg-background-surface-hover active:bg-background-surface-hover">
@@ -1374,16 +1428,29 @@ export default function Dashboard() {
                       <p className="font-medium truncate">
                         {transaction.description || transaction.categoryName || t('txTransaction')}
                       </p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {transaction.type === 'transfer' && transaction.transferToAccountName
-                          ? `${transaction.accountName} → ${transaction.transferToAccountName} • ${formatDate(transaction.date, numberLocale)}`
-                          : `${transaction.accountName} • ${formatDate(transaction.date, numberLocale)}`}
+                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          {transaction.type === 'transfer' && transaction.transferToAccountName
+                            ? `${transaction.accountName} → ${transaction.transferToAccountName} • ${formatDate(transaction.date, numberLocale)}`
+                            : `${transaction.accountName} • ${formatDate(transaction.date, numberLocale)}`}
+                        </span>
+                        {transaction.description && transaction.categoryName && (
+                          <span
+                            className="px-1.5 py-0.5 text-xs rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: `${transaction.categoryColor || '#888'}22`,
+                              color: transaction.categoryColor || 'var(--color-muted-foreground)',
+                            }}
+                          >
+                            {transaction.categoryName}
+                          </span>
+                        )}
                       </p>
                     </div>
 
                     {/* Amount & Edit Button */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className={`font-semibold whitespace-nowrap ${
+                      <p className={`font-semibold whitespace-nowrap font-mono ${
                         transaction.type === 'income' ? 'text-income' :
                         transaction.type === 'transfer' ? 'text-primary' :
                         'text-expense'
@@ -1403,8 +1470,11 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
-            </div>
+            </div>{/* closes divide-y */}
+            </div>{/* closes glass-card */}
           </section>
+          </div>{/* closes xl:col-span-2 */}
+          </div>{/* closes grid */}
         </div>
       )}
 
