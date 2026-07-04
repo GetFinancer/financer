@@ -197,6 +197,23 @@ export function Sidebar({ isOpen, onToggle, tenantStatus }: SidebarProps) {
         </div>
       </nav>
 
+      {/* Neue Transaktion – immer sichtbar */}
+      <div className="flex-shrink-0 px-2 pb-3">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('financer:new-transaction'))}
+          title={!isOpen ? t('dashboardNewTransaction') : undefined}
+          className={cn(
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl nav-item-active font-semibold shadow-sm transition-all duration-150',
+            !isOpen && 'justify-center'
+          )}
+        >
+          <svg className={cn('w-5 h-5 flex-shrink-0 text-white', !isOpen && 'mx-auto')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          {isOpen && <span className="text-sm text-white truncate">{t('dashboardNewTransaction')}</span>}
+        </button>
+      </div>
+
       {/* Bottom Section – fixed, not scrollable */}
       <div className="flex-shrink-0 border-t border-border px-2 py-3 space-y-1">
         {isOpen && (
