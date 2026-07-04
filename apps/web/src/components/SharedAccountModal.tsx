@@ -250,7 +250,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="glass-card-elevated w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {confirmDialog && (
@@ -550,7 +550,7 @@ export default function SharedAccountModal({ account, onClose, onDeleted }: Prop
         {/* Invite Modal */}
         {showInvite && invite && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6 rounded-xl">
-            <div className="bg-background border border-border rounded-lg p-6 w-full max-w-sm space-y-4">
+            <div className="glass-card-elevated p-6 w-full max-w-sm space-y-4">
               <h3 className="font-semibold">{t('sharedAccountsInviteCreate')}</h3>
               <p className="text-xs text-muted-foreground">{t('sharedAccountsInviteTokenHint')}</p>
               <a

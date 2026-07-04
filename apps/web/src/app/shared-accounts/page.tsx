@@ -300,7 +300,7 @@ export default function SharedAccountsPage() {
       {/* Settle Dialog */}
       {settleDialog && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="glass-card-elevated p-6 w-full max-w-sm space-y-4">
             <h3 className="font-semibold">{t('sharedAccountsSettleTitle')}</h3>
             <p className="text-sm text-muted-foreground">
               {t('sharedAccountsSettleToward').replace('{name}', settleDialog.displayName ?? settleDialog.creditorTenant)}

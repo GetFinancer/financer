@@ -686,7 +686,7 @@ export default function Dashboard() {
       ) : !summary ? (
         <div className="text-center py-8 text-muted-foreground">{t('dashboardErrorLoading')}</div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-6">
           {/* Financial Overview Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -803,6 +803,7 @@ export default function Dashboard() {
             </div>
 
             {/* Unified Card Grid */}
+            <div className="glass-card glass-card-amber overflow-hidden glow-amber p-5">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {cardVisibility.totalBalance && (
                 <div className="kpi-card">
@@ -876,10 +877,11 @@ export default function Dashboard() {
                   </div>
                 ))}
             </div>
+            </div>{/* closes glass-card glow-amber */}
           </section>
 
           {/* Quick Add Button */}
-          <div className="flex justify-center">
+          <div className="flex justify-center mb-6">
             <button
               onClick={openNewTransaction}
               className="flex items-center gap-2 px-6 py-3 nav-item-active rounded-full font-semibold shadow-md hover:opacity-90 active:scale-95 transition-all duration-150"
@@ -891,9 +893,15 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Planned Transactions Section */}
+          {/* Two-column layout */}
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
+
+          {/* Left: Geplante Buchungen */}
+          <div className="xl:col-span-3">
           <section>
-            <div className="flex items-center justify-between mb-4">
+          <div className="glass-card glass-card-blue overflow-hidden glow-blue">
+            {/* Section Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-5 rounded-full bg-primary" />
                 <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
@@ -904,7 +912,7 @@ export default function Dashboard() {
             </div>
 
             {/* Month Selector */}
-            <div className="glass-card p-4 mb-4">
+            <div className="px-5 py-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <button
                   onClick={goToPreviousMonth}
@@ -1030,10 +1038,11 @@ export default function Dashboard() {
             </div>
 
             {/* Recurring Instances and Credit Card Bills - Two Column Layout */}
+            <div className="p-5">
             {loadingInstances ? (
-              <div className="glass-card p-6 text-center text-muted-foreground">{t('loading')}</div>
+              <div className="rounded-xl border border-border/50 p-6 text-center text-muted-foreground">{t('loading')}</div>
             ) : instances.length === 0 && creditCardBills.length === 0 ? (
-              <div className="glass-card p-8 text-center">
+              <div className="rounded-xl border border-border/50 p-8 text-center">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1063,78 +1072,80 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
-                  {/* Credit Card Bills */}
-                  {creditCardBills
-                    .filter(bill => !hideCompleted || !bill.completed)
-                    .filter(bill => !recurringSearch || bill.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
-                    .map((bill) => (
-                    <div
-                      key={`cc-${bill.id}`}
-                      className={`glass-card p-4 ${bill.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleCreditCardBill(bill.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            bill.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {bill.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${bill.completed ? 'line-through' : ''}`}>
-                              💳 {bill.accountName}
-                            </p>
-                            <p className="font-semibold text-expense whitespace-nowrap font-mono">
-                              -{formatCurrency(bill.amount, 'EUR', numberLocale)}
-                            </p>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {t('dashboardDue')} {formatDate(bill.paymentDate, numberLocale)}
-                            {bill.linkedAccountName && (
-                              <span className="ml-2 text-xs text-primary">→ {bill.linkedAccountName}</span>
+                  {/* Ausgaben — grouped list */}
+                  {(creditCardBills.filter(b => !hideCompleted || !b.completed).filter(b => !recurringSearch || b.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0 ||
+                    instances.filter(i => i.type === 'expense' && (!hideCompleted || !i.completed)).filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0) && (
+                    <div className="rounded-xl border border-border/50 divide-y divide-border/40 overflow-hidden">
+                      {creditCardBills
+                        .filter(bill => !hideCompleted || !bill.completed)
+                        .filter(bill => !recurringSearch || bill.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
+                        .map((bill) => (
+                        <div key={`cc-${bill.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${bill.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleCreditCardBill(bill.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              bill.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
+                            }`}
+                          >
+                            {bill.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              (bill.accountName || 'K').charAt(0).toUpperCase()
                             )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Expense Instances */}
-                  {sortInstances(
-                    instances
-                    .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
-                    expenseSort
-                  ).map((instance) => (
-                    <div
-                      key={`ri-${instance.id}`}
-                      className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleInstance(instance.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            instance.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {instance.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${instance.completed ? 'line-through' : ''}`}>
-                              {instance.name}
-                              {instance.isModified && (
-                                <span className="ml-2 text-xs text-primary">✎</span>
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${bill.completed ? 'line-through' : ''}`}>
+                              {bill.accountName}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {t('dashboardDue')} {formatDate(bill.paymentDate, numberLocale)}
+                              {bill.linkedAccountName && (
+                                <span className="ml-1.5 text-xs text-primary">→ {bill.linkedAccountName}</span>
                               )}
                             </p>
-                            <div className="text-right flex-shrink-0">
+                          </div>
+                          <span className="font-semibold text-expense whitespace-nowrap font-mono flex-shrink-0">
+                            -{formatCurrency(bill.amount, 'EUR', numberLocale)}
+                          </span>
+                        </div>
+                      ))}
+                      {sortInstances(
+                        instances
+                        .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
+                        .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                        expenseSort
+                      ).map((instance) => (
+                        <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleInstance(instance.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              instance.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
+                            }`}
+                          >
+                            {instance.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              instance.name.charAt(0).toUpperCase()
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${instance.completed ? 'line-through' : ''}`}>
+                              {instance.name}
+                              {instance.isModified && <span className="ml-1.5 text-xs text-primary">✎</span>}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {formatDate(instance.dueDate, numberLocale)}
+                              {instance.accountName && (
+                                <span className="ml-1.5 text-xs text-primary">• {instance.accountName}</span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="text-right">
                               <p className="font-semibold text-expense whitespace-nowrap font-mono">
                                 -{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
@@ -1144,14 +1155,6 @@ export default function Dashboard() {
                                 </p>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(instance.dueDate, numberLocale)}
-                              {instance.accountName && (
-                                <span className="ml-2 text-xs text-primary">• {instance.accountName}</span>
-                              )}
-                            </p>
                             <button
                               onClick={() => openEditInstance(instance)}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
@@ -1163,9 +1166,9 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                   {creditCardBills
                     .filter(b => !hideCompleted || !b.completed)
                     .filter(b => !recurringSearch || b.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
@@ -1208,37 +1211,44 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
-                  {sortInstances(
-                    instances
-                    .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
-                    incomeSort
-                  ).map((instance) => (
-                    <div
-                      key={`ri-${instance.id}`}
-                      className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleToggleInstance(instance.id)}
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
-                            instance.completed
-                              ? 'bg-income border-income text-white'
-                              : 'border-border hover:border-primary'
-                          }`}
-                        >
-                          {instance.completed && '✓'}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`font-medium ${instance.completed ? 'line-through' : ''}`}>
+                  {/* Einnahmen — grouped list */}
+                  {instances.filter(i => i.type === 'income' && (!hideCompleted || !i.completed)).filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())).length > 0 && (
+                    <div className="rounded-xl border border-border/50 divide-y divide-border/40 overflow-hidden">
+                      {sortInstances(
+                        instances
+                        .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
+                        .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                        incomeSort
+                      ).map((instance) => (
+                        <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={() => handleToggleInstance(instance.id)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                              instance.completed ? 'bg-income text-white' : 'bg-income/20 text-income hover:bg-income/30'
+                            }`}
+                          >
+                            {instance.completed ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              instance.name.charAt(0).toUpperCase()
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${instance.completed ? 'line-through' : ''}`}>
                               {instance.name}
-                              {instance.isModified && (
-                                <span className="ml-2 text-xs text-primary">✎</span>
+                              {instance.isModified && <span className="ml-1.5 text-xs text-primary">✎</span>}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {formatDate(instance.dueDate, numberLocale)}
+                              {instance.accountName && (
+                                <span className="ml-1.5 text-xs text-primary">• {instance.accountName}</span>
                               )}
                             </p>
-                            <div className="text-right flex-shrink-0">
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="text-right">
                               <p className="font-semibold text-income whitespace-nowrap font-mono">
                                 +{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
@@ -1248,14 +1258,6 @@ export default function Dashboard() {
                                 </p>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(instance.dueDate, numberLocale)}
-                              {instance.accountName && (
-                                <span className="ml-2 text-xs text-primary">• {instance.accountName}</span>
-                              )}
-                            </p>
                             <button
                               onClick={() => openEditInstance(instance)}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
@@ -1267,9 +1269,9 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                   {instances
                     .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
                     .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
@@ -1359,32 +1361,38 @@ export default function Dashboard() {
                 </div>
               )}
             </>)}
+            </div>{/* closes p-5 */}
+          </div>{/* closes glass-card */}
           </section>
+          </div>{/* closes xl:col-span-3 */}
 
+          {/* Right: Letzte Transaktionen */}
+          <div className="xl:col-span-2">
           {/* Recent Transactions */}
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-secondary" />
-                <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
+            <div className="glass-card glass-card-purple overflow-hidden glow-purple">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-secondary" />
+                  <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={transactionLimit}
+                    onChange={(e) => setTransactionLimit(Number(e.target.value))}
+                    className="text-xs text-muted-foreground rounded border border-border/50 bg-transparent px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <Link href="/transactions" className="text-sm text-primary hover:underline">
+                    {t('dashboardShowAll')}
+                  </Link>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <select
-                  value={transactionLimit}
-                  onChange={(e) => setTransactionLimit(Number(e.target.value))}
-                  className="text-xs text-muted-foreground rounded border border-border/50 bg-transparent px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <Link href="/transactions" className="text-sm text-primary hover:underline">
-                  {t('dashboardShowAll')}
-                </Link>
-              </div>
-            </div>
-            <div className="glass-card divide-y divide-border/50">
+            <div className="divide-y divide-border/50">
               {recentTransactions.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
@@ -1420,10 +1428,23 @@ export default function Dashboard() {
                       <p className="font-medium truncate">
                         {transaction.description || transaction.categoryName || t('txTransaction')}
                       </p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {transaction.type === 'transfer' && transaction.transferToAccountName
-                          ? `${transaction.accountName} → ${transaction.transferToAccountName} • ${formatDate(transaction.date, numberLocale)}`
-                          : `${transaction.accountName} • ${formatDate(transaction.date, numberLocale)}`}
+                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          {transaction.type === 'transfer' && transaction.transferToAccountName
+                            ? `${transaction.accountName} → ${transaction.transferToAccountName} • ${formatDate(transaction.date, numberLocale)}`
+                            : `${transaction.accountName} • ${formatDate(transaction.date, numberLocale)}`}
+                        </span>
+                        {transaction.description && transaction.categoryName && (
+                          <span
+                            className="px-1.5 py-0.5 text-xs rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: `${transaction.categoryColor || '#888'}22`,
+                              color: transaction.categoryColor || 'var(--color-muted-foreground)',
+                            }}
+                          >
+                            {transaction.categoryName}
+                          </span>
+                        )}
                       </p>
                     </div>
 
@@ -1449,8 +1470,11 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
-            </div>
+            </div>{/* closes divide-y */}
+            </div>{/* closes glass-card */}
           </section>
+          </div>{/* closes xl:col-span-2 */}
+          </div>{/* closes grid */}
         </div>
       )}
 

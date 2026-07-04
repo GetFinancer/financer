@@ -5,31 +5,123 @@
 /* Glass Effect Utilities */
 @layer components {
   .glass-card {
-    background: hsl(var(--glass-bg));
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid hsl(var(--glass-border));
-    border-radius: 0.75rem;
-    transition: all 0.2s ease;
+    position: relative;
+    background: linear-gradient(160deg, hsl(222 38% 9%) 0%, hsl(222 42% 7%) 100%);
+    border: 1px solid hsl(222 40% 20% / 0.6);
+    border-radius: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow:
+      0 8px 40px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 hsl(217 91% 60% / 0.07);
   }
 
   .glass-card:hover {
-    background: hsl(240 6% 12% / 0.7);
-    border-color: hsl(0 0% 100% / 0.15);
+    border-color: hsl(222 50% 30% / 0.7);
+  }
+
+  /* Accent borders + outer glow per section */
+  .glass-card-amber {
+    border-color: hsl(38 90% 55% / 0.15);
+    box-shadow:
+      0 0 60px -8px hsl(38 90% 55% / 0.07),
+      0 8px 40px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 hsl(38 90% 55% / 0.06);
+  }
+
+  .glass-card-blue {
+    border-color: hsl(217 91% 60% / 0.15);
+    box-shadow:
+      0 0 60px -8px hsl(217 91% 60% / 0.07),
+      0 8px 40px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 hsl(217 91% 60% / 0.06);
+  }
+
+  .glass-card-purple {
+    border-color: hsl(260 80% 65% / 0.15);
+    box-shadow:
+      0 0 60px -8px hsl(260 80% 65% / 0.06),
+      0 8px 40px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 hsl(260 80% 65% / 0.06);
+  }
+
+  /* Section inner glow — requires overflow-hidden */
+  .glow-amber::before {
+    content: '';
+    position: absolute;
+    top: -80px;
+    right: -80px;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, hsl(38 90% 55% / 0.1) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-blue::before {
+    content: '';
+    position: absolute;
+    bottom: -80px;
+    left: -60px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, hsl(217 91% 60% / 0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-purple::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, hsl(260 80% 65% / 0.07) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .light .glass-card {
+    background: hsl(0 0% 100%);
+    border-color: hsl(220 20% 90%);
+    box-shadow: 0 2px 16px rgba(100, 120, 180, 0.08), 0 1px 4px rgba(0,0,0,0.05);
   }
 
   .light .glass-card:hover {
-    background: hsl(0 0% 100% / 0.85);
-    border-color: hsl(220 13% 80%);
+    background: hsl(0 0% 100%);
+    border-color: hsl(220 20% 82%);
+    box-shadow: 0 4px 24px rgba(100, 120, 180, 0.12), 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .light .glass-card-amber {
+    border-color: hsl(38 80% 60% / 0.3);
+    box-shadow: 0 2px 16px rgba(100, 120, 180, 0.06), 0 0 24px -6px hsl(38 90% 55% / 0.12), 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .light .glass-card-blue {
+    border-color: hsl(217 91% 60% / 0.25);
+    box-shadow: 0 2px 16px rgba(100, 120, 180, 0.06), 0 0 24px -6px hsl(217 91% 60% / 0.1), 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .light .glass-card-purple {
+    border-color: hsl(260 70% 65% / 0.25);
+    box-shadow: 0 2px 16px rgba(100, 120, 180, 0.06), 0 0 24px -6px hsl(260 70% 65% / 0.1), 0 1px 4px rgba(0,0,0,0.05);
   }
 
   .glass-card-elevated {
-    background: hsl(var(--glass-bg-elevated));
-    backdrop-filter: blur(var(--glass-blur-heavy));
-    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
-    border: 1px solid hsl(var(--glass-border));
-    border-radius: 0.75rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(160deg, hsl(222 40% 11%) 0%, hsl(222 42% 9%) 100%);
+    border: 1px solid hsl(217 91% 60% / 0.14);
+    border-radius: 1rem;
+    box-shadow:
+      0 0 0 1px hsl(222 40% 18% / 0.4),
+      0 16px 56px rgba(0, 0, 0, 0.65),
+      inset 0 1px 0 hsl(217 91% 60% / 0.08);
+  }
+
+  .light .glass-card-elevated {
+    background: hsl(0 0% 100%);
+    border-color: hsl(220 13% 88%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   }
 
   .glass-nav {
@@ -45,40 +137,39 @@
       0 4px 24px -4px hsl(var(--glow-primary));
   }
 
-  /* KPI Card: dominante Finanzwerte, weiche Radien */
+  /* KPI Card */
   .kpi-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: 1rem; /* rounded-2xl */
-    padding: 1.25rem; /* p-5 */
-    transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+    background: linear-gradient(145deg, hsl(222 40% 11%) 0%, hsl(222 38% 9%) 100%);
+    border: 1px solid hsl(222 40% 22% / 0.55);
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 hsl(217 91% 60% / 0.1);
   }
 
   .kpi-card:hover {
-    border-color: hsl(var(--primary) / 0.45);
-    background: linear-gradient(
-      145deg,
-      hsl(var(--card)) 55%,
-      hsl(var(--primary) / 0.06) 100%
-    );
+    border-color: hsl(var(--primary) / 0.4);
     box-shadow:
-      0 6px 28px rgba(0, 0, 0, 0.32),
-      0 0 0 1px hsl(var(--primary) / 0.18),
-      0 0 24px hsl(var(--primary) / 0.12),
-      0 0 48px hsl(var(--secondary) / 0.06);
+      0 8px 32px rgba(0, 0, 0, 0.45),
+      0 0 28px hsl(var(--primary) / 0.1),
+      inset 0 1px 0 hsl(var(--primary) / 0.15);
   }
 
 
   .light .kpi-card {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    background: hsl(0 0% 100%);
+    border: 1px solid hsl(220 20% 90%);
+    box-shadow: 0 2px 12px rgba(100, 120, 180, 0.08), 0 1px 3px rgba(0,0,0,0.06);
   }
 
   .light .kpi-card:hover {
+    background: hsl(0 0% 100%);
+    border-color: hsl(var(--primary) / 0.3);
     box-shadow:
-      0 6px 20px rgba(0, 0, 0, 0.1),
-      0 0 0 1px hsl(var(--primary) / 0.15),
-      0 0 18px hsl(var(--primary) / 0.08);
+      0 4px 20px rgba(100, 120, 180, 0.12),
+      0 0 0 1px hsl(var(--primary) / 0.12);
   }
 
   /* Aktiver Nav-Eintrag: Primary → Secondary Gradient */
@@ -102,8 +193,14 @@
 
   /* Sidebar-Hintergrund */
   .sidebar-bg {
-    background: hsl(var(--background-surface));
-    border-right: 1px solid hsl(var(--border));
+    background: linear-gradient(180deg, hsl(222 48% 5%) 0%, hsl(222 45% 4%) 100%);
+    border-right: 1px solid hsl(222 40% 14%);
+  }
+
+  .light .sidebar-bg {
+    background: linear-gradient(180deg, hsl(220 25% 98%) 0%, hsl(220 20% 97%) 100%);
+    border-right: 1px solid hsl(220 20% 90%);
+    box-shadow: 2px 0 16px rgba(100, 120, 180, 0.06);
   }
 
   /* Topbar */
@@ -117,18 +214,18 @@
 
 @layer base {
   :root {
-    /* Dark Fintech Theme - Default */
-    --background: 240 8% 5%;
-    --background-surface: 240 6% 10%;
-    --background-surface-hover: 210 24% 16%;
+    /* Dark Fintech Theme - Premium Deep Navy */
+    --background: 222 45% 3%;
+    --background-surface: 222 40% 7%;
+    --background-surface-hover: 222 38% 11%;
 
-    --foreground: 0 0% 90%;
-    --foreground-secondary: 218 11% 65%;
-    --foreground-disabled: 220 9% 46%;
-    --foreground-inverse: 240 8% 5%;
+    --foreground: 218 30% 92%;
+    --foreground-secondary: 218 18% 62%;
+    --foreground-disabled: 220 12% 44%;
+    --foreground-inverse: 222 32% 6%;
 
-    --card: 240 6% 10%;
-    --card-foreground: 0 0% 90%;
+    --card: 222 26% 11%;
+    --card-foreground: 218 30% 92%;
 
     --primary: 217 91% 60%;
     --primary-hover: 217 83% 53%;
@@ -140,8 +237,8 @@
     --secondary-active: 224 76% 42%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 6% 10%;
-    --muted-foreground: 218 11% 65%;
+    --muted: 222 26% 11%;
+    --muted-foreground: 218 18% 62%;
 
     --accent: 221 83% 53%;
     --accent-foreground: 0 0% 100%;
@@ -149,9 +246,9 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 17%;
+    --border: 222 22% 19%;
     --border-focus: 217 91% 60%;
-    --input: 240 5% 17%;
+    --input: 222 22% 19%;
     --ring: 217 91% 60%;
 
     --radius: 0.5rem;
@@ -172,12 +269,12 @@
     --chart-secondary: 43 96% 56%;
     --chart-success: 142 71% 45%;
     --chart-muted: 215 16% 47%;
-    --chart-grid: 240 5% 17%;
+    --chart-grid: 222 22% 19%;
 
     /* Glass Effects */
-    --glass-bg: 240 6% 10% / 0.6;
-    --glass-bg-elevated: 240 6% 12% / 0.8;
-    --glass-border: 0 0% 100% / 0.1;
+    --glass-bg: 222 42% 8% / 0.95;
+    --glass-bg-elevated: 222 42% 10% / 0.98;
+    --glass-border: 222 40% 22% / 0.6;
     --glass-blur: 12px;
     --glass-blur-heavy: 20px;
     --glass-blur-light: 8px;
@@ -195,9 +292,9 @@
 
   /* Light Theme */
   .light {
-    --background: 0 0% 98%;
-    --background-surface: 0 0% 100%;
-    --background-surface-hover: 220 14% 96%;
+    --background: 220 22% 94%;
+    --background-surface: 220 20% 97%;
+    --background-surface-hover: 220 18% 92%;
 
     --foreground: 222 47% 11%;
     --foreground-secondary: 215 16% 47%;
@@ -226,9 +323,9 @@
     --destructive: 0 84% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 87%;
+    --border: 220 20% 88%;
     --border-focus: 217 91% 55%;
-    --input: 220 13% 87%;
+    --input: 220 20% 88%;
     --ring: 217 91% 55%;
 
     /* Status Colors */
@@ -281,6 +378,34 @@
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans), system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    position: relative;
+  }
+
+  html.light .glow-amber::before { background: radial-gradient(circle, hsl(38 90% 55% / 0.06) 0%, transparent 60%); }
+  html.light .glow-blue::before { background: radial-gradient(circle, hsl(217 91% 60% / 0.05) 0%, transparent 60%); }
+  html.light .glow-purple::before { background: radial-gradient(circle, hsl(260 80% 65% / 0.04) 0%, transparent 60%); }
+
+  /* Input fields — slightly elevated above background for readability */
+  :root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  :root select,
+  :root textarea {
+    background-color: hsl(222 40% 8%);
+    border-color: hsl(222 38% 20%);
+    color: hsl(var(--foreground));
+  }
+
+  :root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+  :root select:focus,
+  :root textarea:focus {
+    border-color: hsl(var(--primary) / 0.6);
+    background-color: hsl(222 40% 9%);
+  }
+
+  .light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .light select,
+  .light textarea {
+    background-color: hsl(0 0% 100%);
+    border-color: hsl(220 20% 86%);
   }
 
   /* Tabular numbers — prevents layout shifts when amounts change */
