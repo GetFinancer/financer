@@ -36,6 +36,8 @@ export default function Dashboard() {
 
   // Hide completed toggle
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [expenseSort, setExpenseSort] = useState<{ field: 'date' | 'name'; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'asc' });
+  const [incomeSort, setIncomeSort] = useState<{ field: 'date' | 'name'; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'asc' });
 
   // Search for recurring transactions (desktop only)
   const [recurringSearch, setRecurringSearch] = useState('');
@@ -588,6 +590,18 @@ export default function Dashboard() {
     setShowMonthPicker(false);
   }
 
+  function sortInstances(
+    list: RecurringInstanceWithDetails[],
+    sort: { field: 'date' | 'name'; dir: 'asc' | 'desc' }
+  ) {
+    return [...list].sort((a, b) => {
+      const cmp = sort.field === 'date'
+        ? a.dueDate.localeCompare(b.dueDate)
+        : a.name.localeCompare(b.name);
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+
   // Calculate planned totals (including credit card bills as expenses)
   const creditCardTotal = creditCardBills.reduce((sum, b) => sum + b.amount, 0);
   const creditCardCompleted = creditCardBills.filter(b => b.completed).reduce((sum, b) => sum + b.amount, 0);
@@ -1019,7 +1033,21 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Ausgaben (Links) */}
                 <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-expense bg-expense/10 rounded-lg py-2 px-3 text-center md:text-left md:text-sm md:font-medium md:text-muted-foreground md:bg-transparent md:py-0 md:px-1">{t('dashboardExpenses')}</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-expense bg-expense/10 rounded-lg py-2 px-3 text-center md:text-left md:text-sm md:font-medium md:text-muted-foreground md:bg-transparent md:py-0 md:px-1">{t('dashboardExpenses')}</h3>
+                    <div className="flex items-center gap-1">
+                      {(['date', 'name'] as const).map(field => (
+                        <button
+                          key={field}
+                          onClick={() => setExpenseSort(prev => prev.field === field ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })}
+                          className={`flex items-center gap-0.5 text-xs px-2 py-1 rounded-full border transition-colors ${expenseSort.field === field ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:border-foreground'}`}
+                        >
+                          {field === 'date' ? t('sortDate') : t('sortName')}
+                          {expenseSort.field === field && <span>{expenseSort.dir === 'asc' ? ' ↑' : ' ↓'}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {/* Credit Card Bills */}
                   {creditCardBills
                     .filter(bill => !hideCompleted || !bill.completed)
@@ -1061,10 +1089,12 @@ export default function Dashboard() {
                     </div>
                   ))}
                   {/* Expense Instances */}
-                  {instances
+                  {sortInstances(
+                    instances
                     .filter(i => i.type === 'expense' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
-                    .map((instance) => (
+                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                    expenseSort
+                  ).map((instance) => (
                     <div
                       key={`ri-${instance.id}`}
                       className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}
@@ -1137,11 +1167,27 @@ export default function Dashboard() {
 
                 {/* Einnahmen (Rechts) */}
                 <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-income bg-income/10 rounded-lg py-2 px-3 text-center md:text-left md:text-sm md:font-medium md:text-muted-foreground md:bg-transparent md:py-0 md:px-1">{t('dashboardIncome')}</h3>
-                  {instances
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-income bg-income/10 rounded-lg py-2 px-3 text-center md:text-left md:text-sm md:font-medium md:text-muted-foreground md:bg-transparent md:py-0 md:px-1">{t('dashboardIncome')}</h3>
+                    <div className="flex items-center gap-1">
+                      {(['date', 'name'] as const).map(field => (
+                        <button
+                          key={field}
+                          onClick={() => setIncomeSort(prev => prev.field === field ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })}
+                          className={`flex items-center gap-0.5 text-xs px-2 py-1 rounded-full border transition-colors ${incomeSort.field === field ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground hover:border-foreground'}`}
+                        >
+                          {field === 'date' ? t('sortDate') : t('sortName')}
+                          {incomeSort.field === field && <span>{incomeSort.dir === 'asc' ? ' ↑' : ' ↓'}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {sortInstances(
+                    instances
                     .filter(i => i.type === 'income' && (!hideCompleted || !i.completed))
-                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase()))
-                    .map((instance) => (
+                    .filter(i => !recurringSearch || i.name.toLowerCase().includes(recurringSearch.toLowerCase()) || i.accountName?.toLowerCase().includes(recurringSearch.toLowerCase())),
+                    incomeSort
+                  ).map((instance) => (
                     <div
                       key={`ri-${instance.id}`}
                       className={`glass-card p-4 ${instance.completed ? 'opacity-60' : ''}`}

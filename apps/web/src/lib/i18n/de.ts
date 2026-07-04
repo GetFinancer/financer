@@ -249,6 +249,7 @@ const de = {
   recurringTitle: 'Daueraufträge',
   recurringNewRecurring: 'Neuer Dauerauftrag',
   recurringEditRecurring: 'Bearbeiten',
+  recurringSearch: 'Dauerauftrag suchen...',
   recurringNoRecurring: 'Keine Daueraufträge vorhanden',
   recurringCreateFirst: 'Ersten Dauerauftrag erstellen',
   recurringExpenses: 'Ausgaben',
@@ -525,6 +526,9 @@ const de = {
   sharedAccountsSettlement: 'Schuldenausgleich',
   sharedAccountsDebtSectionIOwePre: 'Du schuldest',
   sharedAccountsDebtSectionTheyOwePre: 'Schuldet dir',
+  sort: 'Sortierung',
+  sortDate: 'Datum',
+  sortName: 'Name',
 } as const;
 
 export type TranslationKey = keyof typeof de;

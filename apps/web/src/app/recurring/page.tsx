@@ -32,6 +32,7 @@ export default function RecurringPage() {
 
   const weekdayLabels = [t('weekSunday'), t('weekMonday'), t('weekTuesday'), t('weekWednesday'), t('weekThursday'), t('weekFriday'), t('weekSaturday')];
   const [recurring, setRecurring] = useState<RecurringTransactionWithDetails[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
@@ -621,6 +622,22 @@ export default function RecurringPage() {
           </div>
         )}
 
+        {/* Search */}
+        {recurring.length > 0 && (
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('recurringSearch')}
+              className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        )}
+
         {/* List - Two Column Layout */}
         {recurring.length === 0 ? (
           <div className="glass-card p-8 text-center">
@@ -638,12 +655,12 @@ export default function RecurringPage() {
             {/* Expenses (Left) */}
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-expense">{t('recurringExpenses')}</h2>
-              {recurring.filter(item => item.type === 'expense').length === 0 ? (
+              {recurring.filter(item => item.type === 'expense' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
                 <div className="glass-card p-4 text-center text-muted-foreground text-sm">
                   {t('recurringNoExpenses')}
                 </div>
               ) : (
-                recurring.filter(item => item.type === 'expense').map((item) => (
+                recurring.filter(item => item.type === 'expense' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).map((item) => (
                   <div
                     key={item.id}
                     className={`glass-card p-4 ${!item.active ? 'opacity-50' : ''}`}
@@ -730,12 +747,12 @@ export default function RecurringPage() {
             {/* Income (Right) */}
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-income">{t('recurringIncome')}</h2>
-              {recurring.filter(item => item.type === 'income').length === 0 ? (
+              {recurring.filter(item => item.type === 'income' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
                 <div className="glass-card p-4 text-center text-muted-foreground text-sm">
                   {t('recurringNoIncome')}
                 </div>
               ) : (
-                recurring.filter(item => item.type === 'income').map((item) => (
+                recurring.filter(item => item.type === 'income' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).map((item) => (
                   <div
                     key={item.id}
                     className={`glass-card p-4 ${!item.active ? 'opacity-50' : ''}`}
@@ -821,10 +838,10 @@ export default function RecurringPage() {
           </div>
 
           {/* Transfers (full width below) */}
-          {recurring.filter(item => item.type === 'transfer').length > 0 && (
+          {recurring.filter(item => item.type === 'transfer' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).length > 0 && (
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-primary">{t('recurringTransfers')}</h2>
-              {recurring.filter(item => item.type === 'transfer').map((item) => (
+              {recurring.filter(item => item.type === 'transfer' && (!searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()))).map((item) => (
                 <div
                   key={item.id}
                   className={`glass-card p-4 ${!item.active ? 'opacity-50' : ''}`}

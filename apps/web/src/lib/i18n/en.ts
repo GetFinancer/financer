@@ -251,6 +251,7 @@ const en: Record<TranslationKey, string> = {
   recurringTitle: 'Recurring Transactions',
   recurringNewRecurring: 'New Recurring',
   recurringEditRecurring: 'Edit',
+  recurringSearch: 'Search recurring transactions...',
   recurringNoRecurring: 'No recurring transactions',
   recurringCreateFirst: 'Create first recurring transaction',
   recurringExpenses: 'Expenses',
@@ -527,6 +528,9 @@ const en: Record<TranslationKey, string> = {
   sharedAccountsSettlement: 'Settlement',
   sharedAccountsDebtSectionIOwePre: 'You owe',
   sharedAccountsDebtSectionTheyOwePre: 'Owes you',
+  sort: 'Sort',
+  sortDate: 'Date',
+  sortName: 'Name',
 };
 
 export default en;
