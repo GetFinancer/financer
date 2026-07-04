@@ -357,6 +357,9 @@ accountsRouter.delete('/:id', (req, res) => {
     db.prepare(`DELETE FROM transactions WHERE account_id = ? AND type != 'transfer'`).run(id);
   }
 
+  // Unlink any credit card accounts that reference this account
+  db.prepare('UPDATE accounts SET linked_account_id = NULL WHERE linked_account_id = ?').run(id);
+
   // Auto-stop sharing if this account was shared
   const accountRow = existing as { shared_uuid?: string | null };
   if (accountRow?.shared_uuid) {

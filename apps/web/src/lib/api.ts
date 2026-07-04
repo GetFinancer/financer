@@ -126,7 +126,8 @@ export const api = {
     }),
 
   // Dashboard
-  getDashboardSummary: () => fetchApi<DashboardSummary>('/dashboard/summary'),
+  getDashboardSummary: (year?: number, month?: number) =>
+    fetchApi<DashboardSummary>(`/dashboard/summary${year && month ? `?year=${year}&month=${month}` : ''}`),
 
   getChartData: (months: number = 6) =>
     fetchApi<ChartData>(`/dashboard/chart?months=${months}`),

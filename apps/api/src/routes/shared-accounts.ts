@@ -410,8 +410,39 @@ sharedAccountsRouter.post('/:uuid/transactions', async (req, res) => {
       )
     );
 
+    const txId = result.lastInsertRowid as number;
+
+    // Auto-create equal split so debt is tracked immediately
+    const allMembers = [sa.ownerTenant, ...sa.members.map(m => m.memberTenant)];
+    if (allMembers.length > 1) {
+      await inOwnerDb(sa.ownerTenant, () => {
+        const perPerson = Math.round((amount / allMembers.length) * 100) / 100;
+        const splitResult = db.prepare(
+          'INSERT INTO shared_splits (transaction_id, shared_uuid, split_type) VALUES (?, ?, ?)'
+        ).run(txId, uuid, 'equal');
+        const splitId = splitResult.lastInsertRowid;
+
+        let sumOthers = 0;
+        for (const member of allMembers) {
+          if (member === tenant) continue;
+          db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, member, perPerson);
+          sumOthers += perPerson;
+        }
+
+        const payerAmount = Math.max(0, Math.round((amount - sumOthers) * 100) / 100);
+        db.prepare('INSERT INTO shared_split_shares (split_id, tenant, amount) VALUES (?, ?, ?)').run(splitId, tenant, payerAmount);
+        db.prepare('UPDATE shared_split_shares SET settled = 1 WHERE split_id = ? AND tenant = ?').run(splitId, tenant);
+
+        const desc = description ? `Eigenanteil / Own share: ${description}` : 'Eigenanteil / Own share';
+        const payerTxResult = db.prepare(
+          `INSERT INTO transactions (account_id, amount, type, description, date, added_by) VALUES (?, ?, 'income', ?, ?, ?)`
+        ).run(sa.accountId, payerAmount, desc, date, tenant);
+        db.prepare('UPDATE shared_splits SET payer_settlement_tx_id = ? WHERE id = ?').run(payerTxResult.lastInsertRowid, splitId);
+      });
+    }
+
     const newTx = await inOwnerDb(sa.ownerTenant, () =>
-      db.prepare('SELECT * FROM transactions WHERE id = ?').get(result.lastInsertRowid) as any
+      db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId) as any
     );
 
     res.status(201).json({ success: true, data: newTx });
