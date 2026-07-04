@@ -43,6 +43,15 @@ export default function TransactionsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    function handleNewTransaction() {
+      setEditingId(null);
+      setShowForm(true);
+    }
+    window.addEventListener('financer:new-transaction', handleNewTransaction);
+    return () => window.removeEventListener('financer:new-transaction', handleNewTransaction);
+  }, []);
+
   // Prevent body scroll when modal is open on mobile
   useEffect(() => {
     if (showForm) {
