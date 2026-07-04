@@ -194,7 +194,7 @@ export default function AccountsPage() {
           <div>
             <h1 className="text-2xl font-bold">{t('accountsTitle')}</h1>
             <p className="text-muted-foreground">
-              {t('accountsTotalBalance')} <span className="font-semibold text-foreground">{formatCurrency(totalBalance, undefined, numberLocale)}</span>
+              {t('accountsTotalBalance')} <span className="font-semibold text-foreground font-mono">{formatCurrency(totalBalance, undefined, numberLocale)}</span>
             </p>
           </div>
           <button
@@ -397,7 +397,7 @@ export default function AccountsPage() {
                     )}
                     </div>
                   </div>
-                  <span className={`text-xl font-bold ${account.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+                  <span className={`text-xl font-bold font-mono ${account.balance >= 0 ? 'text-income' : 'text-expense'}`}>
                     {formatCurrency(account.balance, undefined, numberLocale)}
                   </span>
                 </div>

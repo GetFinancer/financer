@@ -962,7 +962,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
                 <div>
                   <p className="text-xs text-muted-foreground">{t('dashboardPlannedIncome')}</p>
-                  <p className="text-lg font-semibold text-income">
+                  <p className="text-lg font-semibold text-income font-mono">
                     {formatCurrency(plannedIncome, 'EUR', numberLocale)}
                     {completedIncome > 0 && (
                       <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -973,7 +973,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t('dashboardPlannedExpenses')}</p>
-                  <p className="text-lg font-semibold text-expense">
+                  <p className="text-lg font-semibold text-expense font-mono">
                     {formatCurrency(plannedExpenses, 'EUR', numberLocale)}
                     {completedExpenses > 0 && (
                       <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -1074,7 +1074,7 @@ export default function Dashboard() {
                             <p className={`font-medium ${bill.completed ? 'line-through' : ''}`}>
                               💳 {bill.accountName}
                             </p>
-                            <p className="font-semibold text-expense whitespace-nowrap">
+                            <p className="font-semibold text-expense whitespace-nowrap font-mono">
                               -{formatCurrency(bill.amount, 'EUR', numberLocale)}
                             </p>
                           </div>
@@ -1120,7 +1120,7 @@ export default function Dashboard() {
                               )}
                             </p>
                             <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-expense whitespace-nowrap">
+                              <p className="font-semibold text-expense whitespace-nowrap font-mono">
                                 -{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1213,7 +1213,7 @@ export default function Dashboard() {
                               )}
                             </p>
                             <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-income whitespace-nowrap">
+                              <p className="font-semibold text-income whitespace-nowrap font-mono">
                                 +{formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1288,7 +1288,7 @@ export default function Dashboard() {
                               )}
                             </p>
                             <div className="text-right flex-shrink-0">
-                              <p className="font-semibold text-primary whitespace-nowrap">
+                              <p className="font-semibold text-primary whitespace-nowrap font-mono">
                                 {formatCurrency(instance.amount, 'EUR', numberLocale)}
                               </p>
                               {instance.isModified && instance.originalAmount !== instance.amount && (
@@ -1383,7 +1383,7 @@ export default function Dashboard() {
 
                     {/* Amount & Edit Button */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className={`font-semibold whitespace-nowrap ${
+                      <p className={`font-semibold whitespace-nowrap font-mono ${
                         transaction.type === 'income' ? 'text-income' :
                         transaction.type === 'transfer' ? 'text-primary' :
                         'text-expense'
