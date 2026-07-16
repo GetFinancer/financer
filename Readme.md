@@ -21,15 +21,19 @@ A self or cloud-hosted Progressive Web App (PWA) for personal finance management
 
 ## Features
 
-- Track income and expenses 
+- Track income and expenses
 - Manage multiple accounts (bank, cash, credit cards, savings)
+- Credit card billing cycles with automatic period calculation
+- Recurring transactions
 - Categorize transactions
-- Dashboard with monthly overview and charts
+- Dashboard with monthly overview, analytics and charts
+- Shared accounts (invite via join link)
+- Multi-language UI (German, English)
 - Simple password protection (single-user)
+- Admin dashboard for user/tenant management
 - Mobile-friendly PWA (installable on phone)
 - Offline-capable
 - Docker deployment ready
-- Shared accounts (Cloud Only)
 
 
 ### Links
@@ -55,8 +59,9 @@ financer/
 
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
 - **Backend**: Express.js, TypeScript
-- **Database**: SQLite (file-based, no separate server needed)s
+- **Database**: SQLite (file-based, no separate server needed)
 - **Auth**: Session-based with bcrypt password hashing
+- **Monorepo**: pnpm workspaces (Node.js >= 20, pnpm >= 9)
 
 ## Deployment Modes
 
@@ -94,6 +99,19 @@ Only needed when `DEPLOYMENT_MODE=cloudhost`:
 | `STRIPE_SECRET_KEY` | Stripe API key for billing |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `STRIPE_PRICE_ID` | Stripe price ID for the subscription product |
+
+### Email / SMTP (optional)
+
+Required for admin password reset via email. Without SMTP configured, password reset is disabled.
+
+| Variable | Description |
+|---|---|
+| `SMTP_HOST` | SMTP server host |
+| `SMTP_PORT` | SMTP port (`587` STARTTLS, `465` SSL) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password / app password |
+| `SMTP_FROM` | Optional, defaults to `SMTP_USER` |
+| `APP_URL` | Optional if `BASE_DOMAIN` is set, used in password reset email links |
 
 ## Data Persistence
 
@@ -145,7 +163,7 @@ Script will ask you to keep your Backups. Your decision ;)
 
 ## Roadmap and releases
 
-coming soon
+See [Releases](https://github.com/getfinancer/financer/releases) for the current changelog.
 
 ## Contributing
 
@@ -154,7 +172,7 @@ The best way to start is to [open a new ticket](https://bugsfinancer.itwtserv.ov
 
 In case you want to contribute, but you wouldn't know how, here are some suggestions:
 
-- Spread the word: Please [write a testimonial](...review Link coming soon) , vote for Financer on any software platform, you can toot or tweet about it, share it on LinkedIn, Reddit and any other social media platform!
+- Spread the word: vote for Financer on any software platform, toot or tweet about it, share it on LinkedIn, Reddit and any other social media platform!
 - Translate Financer into your language, or help to improve the existing translations, many languages look for a contributor
 - Answer questions: You know the answer to another user's problem? Share your knowledge.
 - Something can be done better? An essential feature is missing? Create a [feature request](https://bugsfinancer.itwtserv.ovh)
