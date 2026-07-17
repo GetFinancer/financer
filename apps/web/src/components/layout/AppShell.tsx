@@ -10,6 +10,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
 import { releaseNotes } from '@/lib/release-notes';
+import { BiometricLock } from '@/components/native/BiometricLock';
 import type { TenantStatus } from '@financer/shared';
 
 interface AppShellProps {
@@ -141,6 +142,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <LanguageProvider>
+      <BiometricLock>
       <div className="min-h-screen app-bg-glow">
         {/* Mobile Header */}
         <Header />
@@ -184,6 +186,7 @@ export function AppShell({ children }: AppShellProps) {
           />
         )}
       </div>
+      </BiometricLock>
     </LanguageProvider>
   );
 }

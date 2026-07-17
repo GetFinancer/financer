@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Financer</title>
+  <link rel="stylesheet" href="./bootstrap.css" />
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand">
+      <span class="brand-mark">Financer</span>
+    </div>
+
+    <form id="tenant-form" class="card" novalidate>
+      <label for="tenant-host">Deine Financer-Adresse</label>
+      <input
+        id="tenant-host"
+        name="tenant-host"
+        type="text"
+        inputmode="url"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        placeholder="dein-tenant.getfinancer.com"
+      />
+      <p id="tenant-error" class="error" role="alert" hidden></p>
+      <button type="submit">Weiter</button>
+    </form>
+
+    <p id="loading" class="loading" hidden>Verbindung wird hergestellt …</p>
+  </main>
+
+  <script src="./bootstrap.js"></script>
+</body>
+</html>

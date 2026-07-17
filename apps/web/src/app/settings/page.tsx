@@ -10,6 +10,9 @@ import type { TenantStatus, Category, SharedAccountInfo } from '@financer/shared
 import { PasswordInput } from '@/components/PasswordInput';
 import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { isNative } from '@/lib/native';
+import { isBiometricAvailable } from '@/lib/native/biometric';
+import { getLockEnabled, setLockEnabled } from '@/lib/native/preferences';
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -102,12 +105,17 @@ export default function SettingsPage() {
   const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
   const [sharedAccountsLoading, setSharedAccountsLoading] = useState(true);
 
+  // Biometric lock state (native app only)
+  const [showBiometricSetting, setShowBiometricSetting] = useState(false);
+  const [biometricLockEnabled, setBiometricLockEnabled] = useState(false);
+
   useEffect(() => {
     load2FAStatus();
     loadTenantStatus();
     loadEmail();
     loadCategories();
     loadSharedAccounts();
+    loadBiometricSetting();
     api.getReleaseNotesStatus().then(s => setCurrentVersion(s.currentVersion)).catch(() => {});
     // Load theme from localStorage
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
@@ -166,6 +174,20 @@ export default function SettingsPage() {
     } catch (error: any) {
       setCategoryDeleteError(error.message || t('categoriesDeleteFailed'));
     }
+  }
+
+  async function loadBiometricSetting() {
+    if (!isNative()) return;
+    const available = await isBiometricAvailable();
+    if (!available) return;
+    setShowBiometricSetting(true);
+    setBiometricLockEnabled(await getLockEnabled());
+  }
+
+  async function handleToggleBiometricLock() {
+    const next = !biometricLockEnabled;
+    setBiometricLockEnabled(next);
+    await setLockEnabled(next);
   }
 
   async function loadSharedAccounts() {
@@ -540,6 +562,30 @@ export default function SettingsPage() {
                 {changingPassword ? t('settingsChanging') : t('settingsChangePassword')}
               </button>
             </form>
+
+            {showBiometricSetting && (
+              <div className="mt-5 pt-5 border-t border-border flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold">{t('biometricSettingLabel')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('biometricSettingHint')}</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={biometricLockEnabled}
+                  onClick={handleToggleBiometricLock}
+                  className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${
+                    biometricLockEnabled ? 'bg-primary' : 'bg-white/15'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      biometricLockEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </section>
         </div>
 
