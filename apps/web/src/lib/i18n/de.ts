@@ -543,6 +543,18 @@ const de = {
   sort: 'Sortierung',
   sortDate: 'Datum',
   sortName: 'Name',
+
+  // Native app features
+  biometricLockTitle: 'App gesperrt',
+  biometricLockSubtitle: 'Entsperre die App mit Face ID oder Fingerabdruck.',
+  biometricUnlock: 'Entsperren',
+  biometricRetryHint: 'Biometrie fehlgeschlagen. Erneut versuchen oder mit Passwort anmelden.',
+  biometricUseLogin: 'Mit Passwort anmelden',
+  biometricSettingLabel: 'App mit Biometrie sperren',
+  biometricSettingHint: 'Face ID oder Fingerabdruck beim App-Start und nach Rückkehr aus dem Hintergrund abfragen.',
+  scanReceiptButton: 'Beleg scannen',
+  scanReceiptScanning: 'Scanne...',
+  scanReceiptNoText: 'Kein Text erkannt',
 } as const;
 
 export type TranslationKey = keyof typeof de;

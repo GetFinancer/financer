@@ -101,6 +101,24 @@ describe('API Tests', () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
       });
+
+      it('sets an HttpOnly, SameSite=Lax session cookie and allows an authenticated follow-up request', async () => {
+        const agent = request.agent(app);
+
+        const loginRes = await agent
+          .post('/api/auth/login')
+          .send({ password: 'testpassword' });
+
+        const setCookie = loginRes.headers['set-cookie'];
+        expect(setCookie).toBeDefined();
+        const cookieHeader = Array.isArray(setCookie) ? setCookie.join(';') : setCookie;
+        expect(cookieHeader).toMatch(/HttpOnly/i);
+        expect(cookieHeader).toMatch(/SameSite=Lax/i);
+
+        const followUpRes = await agent.get('/api/accounts');
+        expect(followUpRes.status).toBe(200);
+        expect(followUpRes.body.success).toBe(true);
+      });
     });
   });
 

@@ -9,6 +9,7 @@ import { useTranslation } from '@/lib/i18n';
 import { RECURRING_HINTS, findSemanticCategory } from '@/components/CategoryCombobox';
 import { RecurringQuickModal } from '@/components/RecurringQuickModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { ScanReceiptButton } from '@/components/native/ScanReceiptButton';
 
 export default function Dashboard() {
   const { t, numberLocale } = useTranslation();
@@ -1632,6 +1633,19 @@ export default function Dashboard() {
             </div>
 
             <form onSubmit={handleSaveTransaction} className="space-y-4 min-w-0">
+              {!editingTransaction && (
+                <ScanReceiptButton
+                  onResult={(parsed) =>
+                    setTxFormData((prev) => ({
+                      ...prev,
+                      ...(parsed.amount && { amount: parsed.amount }),
+                      ...(parsed.date && { date: parsed.date }),
+                      ...(parsed.description && { description: parsed.description }),
+                    }))
+                  }
+                />
+              )}
+
               {/* Type Buttons */}
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txType')}</label>

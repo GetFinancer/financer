@@ -100,6 +100,7 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       // Don't set domain - each subdomain gets its own cookie automatically
     },

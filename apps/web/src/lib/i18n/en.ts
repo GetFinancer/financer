@@ -545,6 +545,18 @@ const en: Record<TranslationKey, string> = {
   sort: 'Sort',
   sortDate: 'Date',
   sortName: 'Name',
+
+  // Native app features
+  biometricLockTitle: 'App locked',
+  biometricLockSubtitle: 'Unlock the app with Face ID or fingerprint.',
+  biometricUnlock: 'Unlock',
+  biometricRetryHint: 'Biometric authentication failed. Try again or sign in with your password.',
+  biometricUseLogin: 'Sign in with password',
+  biometricSettingLabel: 'Lock app with biometrics',
+  biometricSettingHint: 'Require Face ID or fingerprint on app start and when returning from the background.',
+  scanReceiptButton: 'Scan receipt',
+  scanReceiptScanning: 'Scanning...',
+  scanReceiptNoText: 'No text recognized',
 };
 
 export default en;
