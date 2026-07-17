@@ -370,15 +370,16 @@ export default function SharedAccountsPage() {
       )}
 
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3 flex-wrap">
+          <div className="w-1 h-5 rounded-sm bg-primary mt-1 flex-shrink-0" />
           <div>
             <h1 className="text-2xl font-bold">{t('sharedAccountsTitle')}</h1>
             <p className="text-muted-foreground">{t('sharedAccountsSubtitle')}</p>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="ml-auto flex gap-2.5 flex-shrink-0">
             <button
               onClick={() => openPanel('share')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'share' ? 'nav-item-active' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-[10px] border text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'share' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-white/14 text-muted-foreground hover:text-foreground'}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -387,7 +388,7 @@ export default function SharedAccountsPage() {
             </button>
             <button
               onClick={() => openPanel('invite')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'invite' ? 'nav-item-active' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-[10px] border text-sm transition-all hover:opacity-90 active:scale-95 ${panel === 'invite' ? 'border-primary/40 bg-primary/10 text-primary' : 'border-white/14 text-muted-foreground hover:text-foreground'}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -551,31 +552,31 @@ export default function SharedAccountsPage() {
           <>
             {/* ── Schulde ich ── */}
             {iOweEntries.length > 0 && (
-              <div className="glass-card overflow-hidden">
+              <div className="rounded-2xl bg-[hsl(var(--expense))]/6 border border-[hsl(var(--expense))]/20 backdrop-blur-xl overflow-hidden">
                 <button
                   onClick={() => setIOweCollapsed(v => !v)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-card/50 transition-colors"
+                  className="w-full flex items-center justify-between px-6 py-4.5 p-4 hover:bg-white/5 transition-colors"
                 >
-                  <span className="font-semibold text-sm flex items-center gap-2">
+                  <span className="font-bold text-sm flex items-center gap-2.5">
                     {t('sharedAccountsTabSchuldeIch')}
-                    <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">{iOweEntries.length}</span>
+                    <span className="w-[18px] h-[18px] rounded-full bg-[hsl(var(--expense))]/30 text-expense flex items-center justify-center text-[10px] font-normal">{iOweEntries.length}</span>
                   </span>
                   <svg className={`w-4 h-4 text-muted-foreground transition-transform ${iOweCollapsed ? '-rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {!iOweCollapsed && (
-                  <div className="border-t border-border divide-y divide-border/50">
+                  <div className="border-t border-[hsl(var(--expense))]/15 divide-y divide-[hsl(var(--expense))]/10">
                     {iOweEntries.map(entry => {
                       const key = `iowe-${entry.account.uuid}-${entry.tenant}`;
                       const isExpanded = expandedDebts.has(key);
                       const hasSources = entry.sources.length > 0;
                       return (
                         <div key={key}>
-                          <div className="flex items-center justify-between px-4 py-3 gap-3">
+                          <div className="flex items-center justify-between px-6 py-3 gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-expense">
+                              <div className="flex items-baseline gap-3 flex-wrap">
+                                <span className="text-[15px] font-bold text-expense font-mono">
                                   {formatCurrency(Math.abs(entry.owes), undefined, numberLocale)}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
@@ -588,13 +589,13 @@ export default function SharedAccountsPage() {
                                   {entry.sources.filter(s => !s.isOffset).map((s, i) => (
                                     <div key={i} className="flex items-center justify-between text-xs text-muted-foreground pl-2 border-l border-border">
                                       <span>{s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span className="text-expense">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-expense font-mono">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                   {entry.sources.filter(s => s.isOffset).map((s, i) => (
                                     <div key={`off-${i}`} className="flex items-center justify-between text-xs text-muted-foreground/60 pl-2 border-l border-border/40 italic">
                                       <span>− {s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span className="text-income">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-income font-mono">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -627,31 +628,31 @@ export default function SharedAccountsPage() {
 
             {/* ── Schuldet mir ── */}
             {theyOweEntries.length > 0 && (
-              <div className="glass-card overflow-hidden">
+              <div className="rounded-2xl bg-[hsl(var(--income))]/6 border border-[hsl(var(--income))]/20 backdrop-blur-xl overflow-hidden">
                 <button
                   onClick={() => setTheyOweCollapsed(v => !v)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-card/50 transition-colors"
+                  className="w-full flex items-center justify-between px-6 py-4.5 p-4 hover:bg-white/5 transition-colors"
                 >
-                  <span className="font-semibold text-sm flex items-center gap-2">
+                  <span className="font-bold text-sm flex items-center gap-2.5">
                     {t('sharedAccountsTabSchuldetMir')}
-                    <span className="text-xs bg-income/20 text-income px-1.5 py-0.5 rounded-full">{theyOweEntries.length}</span>
+                    <span className="w-[18px] h-[18px] rounded-full bg-[hsl(var(--income))]/30 text-income flex items-center justify-center text-[10px] font-normal">{theyOweEntries.length}</span>
                   </span>
                   <svg className={`w-4 h-4 text-muted-foreground transition-transform ${theyOweCollapsed ? '-rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {!theyOweCollapsed && (
-                  <div className="border-t border-border divide-y divide-border/50">
+                  <div className="border-t border-[hsl(var(--income))]/15 divide-y divide-[hsl(var(--income))]/10">
                     {theyOweEntries.map(entry => {
                       const key = `theyowe-${entry.account.uuid}-${entry.tenant}`;
                       const isExpanded = expandedDebts.has(key);
                       const hasSources = entry.sources.length > 0;
                       return (
                         <div key={key}>
-                          <div className="flex items-center justify-between px-4 py-3 gap-3">
+                          <div className="flex items-center justify-between px-6 py-3 gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-income">
+                              <div className="flex items-baseline gap-3 flex-wrap">
+                                <span className="text-[15px] font-bold text-income font-mono">
                                   {formatCurrency(entry.owes, undefined, numberLocale)}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
@@ -664,13 +665,13 @@ export default function SharedAccountsPage() {
                                   {entry.sources.filter(s => !s.isOffset).map((s, i) => (
                                     <div key={i} className="flex items-center justify-between text-xs text-muted-foreground pl-2 border-l border-border">
                                       <span>{s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span className="text-income">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-income font-mono">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                   {entry.sources.filter(s => s.isOffset).map((s, i) => (
                                     <div key={`off-${i}`} className="flex items-center justify-between text-xs text-muted-foreground/60 pl-2 border-l border-border/40 italic">
                                       <span>− {s.description ? translateDesc(s.description) : '—'}</span>
-                                      <span className="text-expense">{formatCurrency(s.amount, undefined, numberLocale)}</span>
+                                      <span className="text-expense font-mono">{formatCurrency(s.amount, undefined, numberLocale)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -699,36 +700,32 @@ export default function SharedAccountsPage() {
                 <p>{t('sharedAccountsEmpty')}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]">
                 {sharedAccounts.map(sa => (
-                  <div key={sa.uuid} className="glass-card p-6 flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold flex items-center gap-2">
-                          {sa.accountName}
-                          <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-normal">
-                            {sa.mode === 'pool' ? t('sharedAccountsModePool') : t('sharedAccountsModeJoint')}
-                          </span>
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {t('sharedAccountsOwner')}: {sa.isOwner ? t('sharedAccountsYou') : sa.ownerTenant}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {t('sharedAccountsMembers').replace('{count}', String(sa.members.length))}
-                        </p>
-                      </div>
-                      <span className={`text-xl font-bold ${sa.balance >= 0 ? 'text-income' : 'text-expense'}`}>
+                  <div key={sa.uuid} className="glass-card p-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h3 className="font-bold text-sm">{sa.accountName}</h3>
+                      <span className="text-[9.5px] px-2 py-0.5 rounded-md bg-blue-500/18 text-blue-300 font-normal">
+                        {sa.mode === 'pool' ? t('sharedAccountsModePool') : t('sharedAccountsModeJoint')}
+                      </span>
+                      <span className={`ml-auto text-sm font-bold font-mono ${sa.balance >= 0 ? 'text-income' : 'text-expense'}`}>
                         {formatCurrency(sa.balance, undefined, numberLocale)}
                       </span>
                     </div>
+                    <p className="text-[10.5px] text-muted-foreground/70">
+                      {t('sharedAccountsOwner')}: {sa.isOwner ? t('sharedAccountsYou') : sa.ownerTenant} · {t('sharedAccountsMembers').replace('{count}', String(sa.members.length))}
+                    </p>
                     <button
                       onClick={() => setSelected(sa)}
-                      className="w-full py-2 text-sm nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all"
+                      className="mt-3 w-full py-2.5 text-sm font-bold bg-primary text-primary-foreground rounded-[10px] shadow-[0_4px_18px_hsl(var(--primary)/0.3)] hover:opacity-90 active:scale-95 transition-all"
                     >
                       {t('sharedAccountsViewDetails')}
                     </button>
                   </div>
                 ))}
+                <div className="rounded-2xl border-2 border-dashed border-white/18 flex items-center justify-center min-h-[140px] p-6 text-center text-muted-foreground text-[11.5px]">
+                  + {t('sharedAccountsShare')} / {t('sharedAccountsEnterLink')}
+                </div>
               </div>
             )}
           </>

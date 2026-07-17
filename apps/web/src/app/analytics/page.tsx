@@ -16,7 +16,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
 type DateRangeType = 'month' | 'quarter' | 'year' | 'custom';
@@ -208,25 +207,33 @@ export default function AnalyticsPage() {
   // Get available categories for the filter based on viewType
   const filterCategories = viewType === 'expense' ? expenseCategories : incomeCategories;
 
+  // Highlight the most recent bar in the monthly trend chart (current period)
+  const currentTrendMonth = analytics?.monthlyTrend.length
+    ? analytics.monthlyTrend[analytics.monthlyTrend.length - 1].month
+    : null;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header with Date Range Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold">
-          Analytics
-          {analytics?.filterCategory && (
-            <span className="text-lg font-normal text-muted-foreground ml-2">
-              - {analytics.filterCategory.name || t('txNoCategory')}
-            </span>
-          )}
-        </h1>
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-5 rounded-full bg-primary flex-shrink-0" />
+          <h1 className="text-xl font-bold tracking-tight">
+            Analytics
+            {analytics?.filterCategory && (
+              <span className="text-base font-normal text-muted-foreground ml-2">
+                - {analytics.filterCategory.name || t('txNoCategory')}
+              </span>
+            )}
+          </h1>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Date Range Type Selector */}
           <select
             value={dateRangeType}
             onChange={(e) => setDateRangeType(e.target.value as DateRangeType)}
-            className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3.5 py-2 rounded-lg border border-border bg-background-surface/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="month">{t('analyticsMonth')}</option>
             <option value="quarter">{t('analyticsQuarter')}</option>
@@ -236,23 +243,23 @@ export default function AnalyticsPage() {
 
           {/* Navigation for non-custom ranges */}
           {dateRangeType !== 'custom' && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 px-1 rounded-lg border border-border bg-background-surface/60">
               <button
                 onClick={goToPrevious}
-                className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                className="p-2 hover:bg-background-surface-hover rounded-md transition-colors text-muted-foreground hover:text-foreground"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <span className="px-3 py-2 font-medium min-w-[140px] text-center">
+              <span className="px-2 py-2 font-semibold text-sm min-w-[130px] text-center">
                 {getDateRangeLabel()}
               </span>
               <button
                 onClick={goToNext}
-                className="p-2 hover:bg-background-surface-hover rounded-md transition-colors"
+                className="p-2 hover:bg-background-surface-hover rounded-md transition-colors text-muted-foreground hover:text-foreground"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -266,14 +273,14 @@ export default function AnalyticsPage() {
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-3 py-2 rounded-lg border border-border bg-background-surface/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <span className="text-muted-foreground">-</span>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-3 py-2 rounded-lg border border-border bg-background-surface/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           )}
@@ -281,24 +288,24 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Category Filter */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex p-1 rounded-[11px] bg-background-surface/60 border border-border text-[11.5px] font-semibold">
           <button
             onClick={() => setViewType('expense')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-lg transition-colors ${
               viewType === 'expense'
-                ? 'bg-expense text-white'
-                : 'bg-background-surface hover:bg-background-surface-hover'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t('dashboardExpenses')}
           </button>
           <button
             onClick={() => setViewType('income')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-lg transition-colors ${
               viewType === 'income'
-                ? 'bg-income text-white'
-                : 'bg-background-surface hover:bg-background-surface-hover'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t('dashboardIncome')}
@@ -306,11 +313,11 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('analyticsCategory')}</span>
+          <span className="text-[10.5px] text-muted-foreground">{t('analyticsCategory')}</span>
           <select
             value={selectedCategoryId || ''}
             onChange={(e) => setSelectedCategoryId(e.target.value ? parseInt(e.target.value, 10) : null)}
-            className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
+            className="px-3 py-2 rounded-lg border border-border bg-background-surface/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
           >
             <option value="">{t('all')}</option>
             {filterCategories.map((cat) => (
@@ -330,17 +337,17 @@ export default function AnalyticsPage() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="glass-card p-6">
-              <div className="text-sm text-muted-foreground mb-1">
+            <div className="rounded-2xl border border-expense/20 bg-expense/[0.06] backdrop-blur-xl p-5">
+              <div className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
                 {analytics.filterCategory ? `${t('dashboardExpenses')} (${analytics.filterCategory.name || t('txNoCategory')})` : t('analyticsTotalExpenses')}
               </div>
-              <div className="text-2xl font-bold text-expense">
+              <div className="text-[26px] font-extrabold font-mono text-expense mt-2">
                 {formatCurrency(analytics.totalExpenses, 'EUR', numberLocale)}
               </div>
               {analytics.previousPeriod && (
-                <div className={`text-sm mt-1 ${
+                <div className={`text-[10.5px] mt-1.5 ${
                   getPercentageChange(analytics.totalExpenses, analytics.previousPeriod.totalExpenses).isPositive
-                    ? 'text-destructive' : 'text-success'
+                    ? 'text-expense' : 'text-income'
                 }`}>
                   {getPercentageChange(analytics.totalExpenses, analytics.previousPeriod.totalExpenses).isPositive ? '▲' : '▼'}
                   {' '}
@@ -349,17 +356,17 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            <div className="glass-card p-6">
-              <div className="text-sm text-muted-foreground mb-1">
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.07] backdrop-blur-xl p-5">
+              <div className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
                 {analytics.filterCategory ? `${t('dashboardIncome')} (${analytics.filterCategory.name || t('txNoCategory')})` : t('analyticsTotalIncome')}
               </div>
-              <div className="text-2xl font-bold text-income">
+              <div className="text-[26px] font-extrabold font-mono text-primary-hover mt-2">
                 {formatCurrency(analytics.totalIncome, 'EUR', numberLocale)}
               </div>
               {analytics.previousPeriod && (
-                <div className={`text-sm mt-1 ${
+                <div className={`text-[10.5px] mt-1.5 ${
                   getPercentageChange(analytics.totalIncome, analytics.previousPeriod.totalIncome).isPositive
-                    ? 'text-success' : 'text-destructive'
+                    ? 'text-income' : 'text-expense'
                 }`}>
                   {getPercentageChange(analytics.totalIncome, analytics.previousPeriod.totalIncome).isPositive ? '▲' : '▼'}
                   {' '}
@@ -370,41 +377,67 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pie Chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Donut Chart */}
             <div className="glass-card p-6">
-              <h2 className="text-lg font-semibold mb-4">
+              <h2 className="text-[12.5px] font-bold mb-4">
                 {t('analyticsByCategory', { type: viewType === 'expense' ? t('dashboardExpenses') : t('dashboardIncome') })}
               </h2>
               {pieChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={pieChartData}
-                      dataKey="amount"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={({ name, percentage }) => `${name} (${percentage}%)`}
-                      labelLine={false}
-                    >
-                      {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value, 'EUR', numberLocale)}
-                      contentStyle={{
-                        backgroundColor: 'hsl(240 6% 10%)',
-                        border: '1px solid hsl(240 5% 17%)',
-                        borderRadius: '8px',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-6">
+                  <div className="relative flex-shrink-0" style={{ width: 170, height: 170 }}>
+                    <ResponsiveContainer width={170} height={170}>
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          dataKey="amount"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={85}
+                          startAngle={90}
+                          endAngle={-270}
+                          stroke="none"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number) => formatCurrency(value, 'EUR', numberLocale)}
+                          contentStyle={{
+                            backgroundColor: 'hsl(240 6% 10%)',
+                            border: '1px solid hsl(240 5% 17%)',
+                            borderRadius: '8px',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[9px] text-muted-foreground tracking-wide">{t('total').toUpperCase()}</span>
+                      <span className="text-sm font-bold font-mono">
+                        {formatCurrency(totalAmount, 'EUR', numberLocale)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex flex-col gap-2 text-[10.5px] min-w-0 flex-1">
+                    {pieChartData.map((cat, index) => (
+                      <div key={cat.id || index} className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-[9px] h-[9px] rounded-[3px] flex-shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        <span className="truncate">{cat.name || t('txNoCategory')}</span>
+                        <span className="text-muted-foreground ml-auto flex-shrink-0">{cat.percentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <div className="h-[220px] flex items-center justify-center text-muted-foreground">
                   {t('noData')}
                 </div>
               )}
@@ -412,18 +445,35 @@ export default function AnalyticsPage() {
 
             {/* Bar Chart - Monthly Trend */}
             <div className="glass-card p-6">
-              <h2 className="text-lg font-semibold mb-4">{t('analyticsMonthlyTrend')}</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-[12.5px] font-bold">{t('analyticsMonthlyTrend')}</h2>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-expense inline-block" />{t('dashboardExpenses')}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-income inline-block" />{t('dashboardIncome')}</span>
+                </div>
+              </div>
               {analytics.monthlyTrend.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={analytics.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 5% 17%)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 5% 17%)" vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fill: 'hsl(218 11% 65%)' }}
+                      tick={({ x, y, payload }) => (
+                        <text
+                          x={x}
+                          y={y + 12}
+                          textAnchor="middle"
+                          fontSize={9.5}
+                          fontWeight={payload.value === currentTrendMonth ? 600 : 400}
+                          fill={payload.value === currentTrendMonth ? 'hsl(var(--primary-hover))' : 'hsl(218 11% 65%)'}
+                        >
+                          {payload.value}
+                        </text>
+                      )}
                       axisLine={{ stroke: 'hsl(240 5% 17%)' }}
                     />
                     <YAxis
-                      tick={{ fill: 'hsl(218 11% 65%)' }}
+                      tick={{ fill: 'hsl(218 11% 65%)', fontSize: 10 }}
                       axisLine={{ stroke: 'hsl(240 5% 17%)' }}
                       tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                     />
@@ -436,23 +486,28 @@ export default function AnalyticsPage() {
                       }}
                       labelStyle={{ color: 'hsl(0 0% 90%)' }}
                     />
-                    <Legend />
-                    <Bar
-                      dataKey="expenses"
-                      name={t('dashboardExpenses')}
-                      fill="hsl(0 84% 60%)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="income"
-                      name={t('dashboardIncome')}
-                      fill="hsl(142 71% 45%)"
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar dataKey="expenses" name={t('dashboardExpenses')} radius={[4, 4, 0, 0]}>
+                      {analytics.monthlyTrend.map((entry, index) => (
+                        <Cell
+                          key={`expense-${index}`}
+                          fill="hsl(0 91% 71%)"
+                          fillOpacity={entry.month === currentTrendMonth ? 0.85 : 0.55}
+                        />
+                      ))}
+                    </Bar>
+                    <Bar dataKey="income" name={t('dashboardIncome')} radius={[4, 4, 0, 0]}>
+                      {analytics.monthlyTrend.map((entry, index) => (
+                        <Cell
+                          key={`income-${index}`}
+                          fill="hsl(158 64% 52%)"
+                          fillOpacity={entry.month === currentTrendMonth ? 1 : 0.55}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <div className="h-[260px] flex items-center justify-center text-muted-foreground">
                   {t('noData')}
                 </div>
               )}
@@ -461,43 +516,46 @@ export default function AnalyticsPage() {
 
           {/* Category List */}
           <div className="glass-card p-6">
-            <h2 className="text-lg font-semibold mb-4">
+            <h2 className="text-[12.5px] font-bold mb-3">
               {t('analyticsTopCategories', { type: viewType === 'expense' ? t('dashboardExpenses') : t('dashboardIncome') })}
             </h2>
             {categoryData.length > 0 ? (
-              <div className="space-y-3">
+              <div className="flex flex-col text-[11.5px]">
                 {categoryData.map((cat, index) => (
-                  <div key={cat.id || index} className="flex items-center gap-4">
+                  <div
+                    key={cat.id || index}
+                    className={`flex items-center gap-3 py-[7px] ${index > 0 ? 'border-t border-border/50' : ''}`}
+                  >
                     {/* Color indicator */}
-                    <div
-                      className="w-4 h-4 rounded-full flex-shrink-0"
+                    <span
+                      className="w-[9px] h-[9px] rounded-[3px] flex-shrink-0"
                       style={{ backgroundColor: cat.color || defaultColors[index % defaultColors.length] }}
                     />
 
                     {/* Category name and parent */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
+                    <div className="flex-1 min-w-0 truncate">
+                      <span className="font-medium">
                         {cat.parentName ? `${cat.parentName} → ` : ''}
                         {cat.name || t('txNoCategory')}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {cat.transactionCount !== 1 ? t('analyticsTransactionCountPlural', { count: cat.transactionCount }) : t('analyticsTransactionCount', { count: cat.transactionCount })}
-                      </div>
+                      </span>{' '}
+                      <span className="text-[9.5px] text-muted-foreground">
+                        · {cat.transactionCount !== 1 ? t('analyticsTransactionCountPlural', { count: cat.transactionCount }) : t('analyticsTransactionCount', { count: cat.transactionCount })}
+                      </span>
                     </div>
 
-                    {/* Amount and percentage */}
-                    <div className="text-right flex-shrink-0">
-                      <div className={`font-semibold ${viewType === 'expense' ? 'text-expense' : 'text-income'}`}>
-                        {formatCurrency(cat.amount, 'EUR', numberLocale)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {cat.percentage}%
-                      </div>
+                    {/* Amount */}
+                    <div className={`font-semibold font-mono flex-shrink-0 ${viewType === 'expense' ? 'text-expense' : 'text-income'}`}>
+                      {formatCurrency(cat.amount, 'EUR', numberLocale)}
+                    </div>
+
+                    {/* Percentage */}
+                    <div className="w-11 text-right text-muted-foreground text-[10px] flex-shrink-0">
+                      {cat.percentage}%
                     </div>
 
                     {/* Progress bar */}
-                    <div className="w-24 hidden sm:block">
-                      <div className="h-2 bg-background-surface rounded-full overflow-hidden">
+                    <div className="w-[90px] hidden sm:block flex-shrink-0">
+                      <div className="h-[5px] bg-background-surface rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -520,7 +578,7 @@ export default function AnalyticsPage() {
           {/* Monthly Breakdown Table (Year + Category selected) */}
           {analytics.monthlyBreakdown && analytics.monthlyBreakdown.length > 0 && (
             <div className="glass-card p-6">
-              <h2 className="text-lg font-semibold mb-4">
+              <h2 className="text-[12.5px] font-bold mb-4">
                 {t('analyticsMonthlyDistribution', { year: selectedYear })}
                 {analytics.filterCategory && ` - ${analytics.filterCategory.name || t('txNoCategory')}`}
               </h2>

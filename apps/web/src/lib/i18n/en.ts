@@ -63,6 +63,8 @@ const en: Record<TranslationKey, string> = {
   // Auth
   login: 'Log in',
   loginTitle: 'Please log in',
+  loginWelcomeBack: 'Welcome back',
+  loginSelfHosted: 'self-hosted',
   loginLoading: 'Logging in...',
   loginWrongPassword: 'Wrong password',
   loginInvalidCode: 'Invalid code',
@@ -91,7 +93,14 @@ const en: Record<TranslationKey, string> = {
   settingsAppearance: 'Appearance',
   settingsTheme: 'Theme',
   settingsThemeToggle: 'Toggle theme',
+  settingsThemeDark: 'Dark',
+  settingsThemeLight: 'Light',
   settingsLanguage: 'Language',
+  settingsCategories: 'Categories',
+  settingsCategoriesManage: 'Manage all categories →',
+  settingsSharedAccounts: 'Shared Accounts',
+  settingsSharedAccountsManage: 'Manage →',
+  settingsFooterLicense: 'MIT License',
 
   // Settings - 2FA
   settings2faTitle: 'Two-Factor Authentication (2FA)',
@@ -246,6 +255,11 @@ const en: Record<TranslationKey, string> = {
   transactionsCancelSelect: 'Cancel',
   transactionsDeleteSelected: 'Delete {count}',
   transactionsConfirmDeleteMultiple: 'Really delete {count} transactions?',
+  transactionsAllAccounts: 'All accounts',
+  transactionsAllCategories: 'All categories',
+  transactionsRecurringOnly: 'Recurring',
+  transactionsCount: '{count} transactions',
+  transactionsRecurringHint: 'recurring',
 
   // Recurring page
   recurringTitle: 'Recurring Transactions',
