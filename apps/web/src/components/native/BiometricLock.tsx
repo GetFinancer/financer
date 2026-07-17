@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { isNative } from '@/lib/native';
 import { getLockEnabled, setLockEnabled } from '@/lib/native/preferences';
 import { authenticate, isBiometricAvailable } from '@/lib/native/biometric';
+import { hideSplash } from '@/lib/native/splash';
 import { useTranslation } from '@/lib/i18n';
 import { api } from '@/lib/api';
 
@@ -34,6 +35,10 @@ export function BiometricLock({ children }: BiometricLockProps) {
       } else {
         setUnlocked(true);
       }
+      // The native splash screen (launchAutoHide: false) stays up until we hide
+      // it explicitly — do it now that we're about to render the lock screen or
+      // the app content, whichever applies.
+      hideSplash();
     });
 
     return () => {

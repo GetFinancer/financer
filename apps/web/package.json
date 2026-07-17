@@ -20,6 +20,7 @@
     "@capacitor/core": "^8.4.2",
     "@capacitor/filesystem": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
     "@financer/shared": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",

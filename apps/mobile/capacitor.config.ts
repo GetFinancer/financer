@@ -9,6 +9,12 @@ const config: CapacitorConfig = {
   appId: 'com.getfinancer.app',
   appName: 'Financer',
   webDir: 'www',
+  server: {
+    // Without this, Capacitor treats navigation to the live tenant domain as
+    // "external" and hands it off to Safari instead of loading it in-app —
+    // this must cover every possible tenant subdomain.
+    allowNavigation: ['*.getfinancer.com', 'getfinancer.com'],
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: false,
