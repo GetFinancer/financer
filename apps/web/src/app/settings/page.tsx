@@ -2,13 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useTranslation, Locale } from '@/lib/i18n';
-import type { TenantStatus } from '@financer/shared';
+import type { TenantStatus, Category, SharedAccountInfo } from '@financer/shared';
 import { PasswordInput } from '@/components/PasswordInput';
 import { ReleaseNotesModal } from '@/components/ReleaseNotesModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="w-1 h-3.5 rounded-sm bg-primary flex-shrink-0" />
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{title}</h2>
+    </div>
+  );
+}
 
 interface TwoFactorStatus {
   enabled: boolean;
@@ -82,10 +92,22 @@ export default function SettingsPage() {
   const [currentVersion, setCurrentVersion] = useState('0.0.0');
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
 
+  // Categories state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoryDeleteError, setCategoryDeleteError] = useState('');
+  const [categoryDeleteDialog, setCategoryDeleteDialog] = useState<number | null>(null);
+
+  // Shared accounts state
+  const [sharedAccounts, setSharedAccounts] = useState<SharedAccountInfo[]>([]);
+  const [sharedAccountsLoading, setSharedAccountsLoading] = useState(true);
+
   useEffect(() => {
     load2FAStatus();
     loadTenantStatus();
     loadEmail();
+    loadCategories();
+    loadSharedAccounts();
     api.getReleaseNotesStatus().then(s => setCurrentVersion(s.currentVersion)).catch(() => {});
     // Load theme from localStorage
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
@@ -116,6 +138,44 @@ export default function SettingsPage() {
       setEmail(result.email || '');
     } catch {
       // Ignore
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const data = await api.getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }
+
+  function handleDeleteCategory(id: number) {
+    setCategoryDeleteDialog(id);
+  }
+
+  async function confirmDeleteCategory() {
+    if (categoryDeleteDialog === null) return;
+    const id = categoryDeleteDialog;
+    setCategoryDeleteDialog(null);
+    try {
+      await api.deleteCategory(id);
+      loadCategories();
+    } catch (error: any) {
+      setCategoryDeleteError(error.message || t('categoriesDeleteFailed'));
+    }
+  }
+
+  async function loadSharedAccounts() {
+    try {
+      const data = await api.getSharedAccounts();
+      setSharedAccounts(data);
+    } catch (error) {
+      console.error('Failed to load shared accounts:', error);
+    } finally {
+      setSharedAccountsLoading(false);
     }
   }
 
@@ -333,87 +393,159 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="max-w-2xl mx-auto space-y-8">
-        <h1 className="text-2xl font-bold">{t('settingsTitle')}</h1>
+      <div className="max-w-6xl mx-auto space-y-5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-1 h-5 rounded-sm bg-primary" />
+          <h1 className="text-lg font-bold tracking-tight">{t('settingsTitle')}</h1>
+        </div>
 
-        {/* Theme Section */}
-        <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settingsAppearance')}</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          {/* PROFIL */}
+          <section className="glass-card p-6">
+            <SectionHeader title={t('settingsAppearance')} />
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t('settingsTheme')}</span>
-
-            {/* Theme Toggle Slider */}
-            <div className="flex items-center gap-2">
-              {/* Sun Icon - Light */}
-              <svg
-                className={`w-5 h-5 ${themeMounted ? 'transition-colors' : ''} ${theme === 'light' ? 'text-yellow-500' : 'text-muted-foreground'}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+            {/* Email / Profile field */}
+            <form onSubmit={handleSaveEmail} className="mb-5">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                {t('settingsEmailTitle')}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-[10px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  placeholder={t('settingsEmailPlaceholder')}
                 />
-              </svg>
+                <button
+                  type="submit"
+                  disabled={emailSaving}
+                  className="px-4 py-2 nav-item-active rounded-[10px] hover:opacity-90 active:scale-95 transition-all text-sm font-semibold disabled:opacity-50"
+                >
+                  {emailSaving ? '...' : t('settingsEmailSave')}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">{t('settingsEmailDescription')}</p>
+              {emailMessage && <p className="text-xs text-income mt-2">{emailMessage}</p>}
+              {emailError && <p className="text-xs text-destructive mt-2">{emailError}</p>}
+            </form>
 
-              {/* Toggle Switch */}
-              <button
-                onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
-                className={`relative w-12 h-7 rounded-full ${themeMounted ? 'transition-colors' : ''} ${
-                  theme === 'dark' ? 'bg-primary' : 'bg-border'
-                }`}
-                style={{ minHeight: 'auto' }}
-                aria-label={t('settingsThemeToggle')}
-              >
-                <span
-                  className={`absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow-md ${themeMounted ? 'transition-transform' : ''} ${
-                    theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-
-              {/* Moon Icon - Dark */}
-              <svg
-                className={`w-5 h-5 ${themeMounted ? 'transition-colors' : ''} ${theme === 'dark' ? 'text-primary' : 'text-muted-foreground'}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
+            {/* Language segmented control */}
+            <div className="mb-5">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                {t('settingsLanguage')}
+              </span>
+              <div className="inline-flex p-1 rounded-[11px] bg-white/[0.06] gap-1">
+                {(Object.keys(locales) as Locale[]).map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setLocale(loc)}
+                    className={`px-4 py-1.5 rounded-[8px] text-xs font-semibold transition-all ${
+                      locale === loc
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {locales[loc].label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Language Switcher */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-            <span className="text-sm text-muted-foreground">{t('settingsLanguage')}</span>
+            {/* Darstellung pill choices */}
+            <div>
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                {t('settingsTheme')}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {(['dark', 'light'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleThemeChange(mode)}
+                    className={`px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${themeMounted ? '' : 'transition-none'} ${
+                      theme === mode
+                        ? 'bg-primary/12 border-primary/30 text-primary-hover'
+                        : 'border-white/12 text-muted-foreground hover:text-foreground hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    {mode === 'dark' ? t('settingsThemeDark') : t('settingsThemeLight')}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
 
-            <select
-              value={locale}
-              onChange={(e) => setLocale(e.target.value as Locale)}
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-            >
-              {(Object.keys(locales) as Locale[]).map((loc) => (
-                <option key={loc} value={loc}>
-                  {locales[loc].flag} {locales[loc].label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
+          {/* SICHERHEIT */}
+          <section className="glass-card p-6">
+            <SectionHeader title={t('settingsChangePassword')} />
+
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                  {t('settingsCurrentPassword')}
+                </label>
+                <PasswordInput
+                  value={passwordForm.currentPassword}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-[10px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                  {t('settingsNewPassword')}
+                </label>
+                <PasswordInput
+                  value={passwordForm.newPassword}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-[10px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
+                  {t('settingsConfirmNewPassword')}
+                </label>
+                <PasswordInput
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-[10px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  required
+                />
+              </div>
+
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+
+              {passwordSuccess && (
+                <p className="text-xs text-income">{passwordSuccess}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="px-4 py-2 nav-item-active rounded-[10px] hover:opacity-90 active:scale-95 transition-all text-sm font-semibold disabled:opacity-50"
+              >
+                {changingPassword ? t('settingsChanging') : t('settingsChangePassword')}
+              </button>
+            </form>
+          </section>
+        </div>
 
         {/* 2FA Section */}
         <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settings2faTitle')}</h2>
+          <SectionHeader title={t('settings2faTitle')} />
 
           {twoFactorError && (
             <p className="text-sm text-destructive mb-4">{twoFactorError}</p>
@@ -656,99 +788,122 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Email Section */}
-        <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settingsEmailTitle')}</h2>
-          <p className="text-sm text-muted-foreground mb-4">{t('settingsEmailDescription')}</p>
-          <form onSubmit={handleSaveEmail} className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-              placeholder={t('settingsEmailPlaceholder')}
-            />
-            <button
-              type="submit"
-              disabled={emailSaving}
-              className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all text-sm disabled:opacity-50"
-            >
-              {emailSaving ? '...' : t('settingsEmailSave')}
-            </button>
-          </form>
-          {emailMessage && <p className="text-sm text-income mt-2">{emailMessage}</p>}
-          {emailError && <p className="text-sm text-destructive mt-2">{emailError}</p>}
-        </section>
+        {/* KATEGORIEN + GETEILTE KONTEN */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          {/* KATEGORIEN */}
+          <section className="glass-card p-6">
+            <SectionHeader title={t('settingsCategories')} />
 
-        {/* Password Change Section */}
-        <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settingsChangePassword')}</h2>
-
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('settingsCurrentPassword')}
-              </label>
-              <PasswordInput
-                value={passwordForm.currentPassword}
-                onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                }
-                className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('settingsNewPassword')}
-              </label>
-              <PasswordInput
-                value={passwordForm.newPassword}
-                onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                }
-                className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('settingsConfirmNewPassword')}
-              </label>
-              <PasswordInput
-                value={passwordForm.confirmPassword}
-                onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                }
-                className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            {passwordError && (
-              <p className="text-sm text-destructive">{passwordError}</p>
+            {categoryDeleteError && (
+              <p className="text-xs text-destructive mb-3">{categoryDeleteError}</p>
             )}
 
-            {passwordSuccess && (
-              <p className="text-sm text-income">{passwordSuccess}</p>
+            {categoriesLoading ? (
+              <p className="text-sm text-muted-foreground">{t('loading')}</p>
+            ) : categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground mb-4">{t('categoriesNoExpenseCategories')}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {categories.map((cat) => {
+                  const color = cat.color || '#6b7280';
+                  return (
+                    <span
+                      key={cat.id}
+                      className="group inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-xs font-medium border"
+                      style={{ backgroundColor: `${color}26`, borderColor: `${color}66`, color }}
+                    >
+                      {cat.name}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                        aria-label={`${t('delete')} ${cat.name}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
             )}
 
-            <button
-              type="submit"
-              disabled={changingPassword}
-              className="px-4 py-2 nav-item-active rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+            <Link
+              href="/categories"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-[10px] border border-dashed border-white/20 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-white/35 transition-colors"
             >
-              {changingPassword ? t('settingsChanging') : t('settingsChangePassword')}
-            </button>
-          </form>
-        </section>
+              {t('categoriesNewCategory')}
+            </Link>
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <Link href="/categories" className="text-xs font-semibold text-primary-hover hover:opacity-80 transition-opacity">
+                {t('settingsCategoriesManage')}
+              </Link>
+            </div>
+          </section>
+
+          {/* GETEILTE KONTEN */}
+          <section className="glass-card p-6">
+            <SectionHeader title={t('settingsSharedAccounts')} />
+
+            {sharedAccountsLoading ? (
+              <p className="text-sm text-muted-foreground">{t('loading')}</p>
+            ) : sharedAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground mb-4">{t('sharedAccountsEmpty')}</p>
+            ) : (
+              <div className="space-y-3 mb-4">
+                {sharedAccounts.map((sa) => (
+                  <div key={sa.uuid} className="flex items-center justify-between gap-3 p-3 rounded-[10px] bg-white/[0.04]">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{sa.accountName}</p>
+                      <p className="text-[10.5px] text-muted-foreground">
+                        {t('sharedAccountsOwner')}: {sa.isOwner ? t('sharedAccountsYou') : sa.ownerTenant} · {t('sharedAccountsMembers').replace('{count}', String(sa.members.length))}
+                      </p>
+                    </div>
+                    <div className="flex -space-x-2 flex-shrink-0">
+                      {sa.members.map((m) => (
+                        <div
+                          key={m.tenant}
+                          title={m.displayName || m.tenant}
+                          className="w-[26px] h-[26px] rounded-full bg-primary/20 border-2 border-background text-primary-hover text-[10px] font-bold flex items-center justify-center"
+                        >
+                          {(m.displayName || m.tenant).charAt(0).toUpperCase()}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Link
+              href="/shared-accounts"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-[10px] border border-dashed border-white/20 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-white/35 transition-colors"
+            >
+              + {t('sharedAccountsShare')}
+            </Link>
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <Link href="/shared-accounts" className="text-xs font-semibold text-primary-hover hover:opacity-80 transition-opacity">
+                {t('settingsSharedAccountsManage')}
+              </Link>
+            </div>
+          </section>
+        </div>
+
+        {categoryDeleteDialog !== null && (
+          <ConfirmDialog
+            message={t('categoriesConfirmDelete')}
+            onConfirm={confirmDeleteCategory}
+            onCancel={() => setCategoryDeleteDialog(null)}
+            confirmLabel={t('yes')}
+            cancelLabel={t('cancel')}
+          />
+        )}
 
         {/* Billing Section */}
         {tenantStatus && !tenantStatus.legacy && (
           <section className="glass-card p-6">
-            <h2 className="text-lg font-semibold mb-4">{t('settingsBillingTitle')}</h2>
+            <SectionHeader title={t('settingsBillingTitle')} />
 
             {tenantStatus.status === 'trial' && (
               <div className="space-y-4">
@@ -845,7 +1000,7 @@ export default function SettingsPage() {
 
         {/* App Info Section */}
         <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settingsAppInfo')}</h2>
+          <SectionHeader title={t('settingsAppInfo')} />
 
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -902,26 +1057,10 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Logout Section */}
-        <section className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-4">{t('settingsSession')}</h2>
-
-          <p className="text-sm text-muted-foreground mb-4">
-            {t('settingsSessionDescription')}
-          </p>
-
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
-          >
-            {t('logout')}
-          </button>
-        </section>
-
         {/* Danger Zone — cloudhost only */}
         {process.env.DEPLOYMENT_MODE === 'cloudhost' && (
           <section className="glass-card p-6 border border-destructive/30">
-            <h2 className="text-lg font-semibold text-destructive mb-2">{t('settingsDeleteAccount')}</h2>
+            <h2 className="text-sm font-bold text-destructive mb-2">{t('settingsDeleteAccount')}</h2>
             <p className="text-sm text-muted-foreground mb-4">{t('settingsDeleteAccountDesc')}</p>
             <button
               onClick={() => setDeleteAccountDialog(true)}
@@ -931,6 +1070,19 @@ export default function SettingsPage() {
             </button>
           </section>
         )}
+
+        {/* Footer bar */}
+        <div className="flex items-center justify-between gap-4 pt-4 pb-1 text-xs text-muted-foreground border-t border-white/[0.08] mt-2">
+          <span className="font-mono">
+            v{currentVersion} · {t('settingsFooterLicense')}
+          </span>
+          <button
+            onClick={handleLogout}
+            className="font-semibold text-destructive hover:opacity-80 transition-opacity"
+          >
+            {t('logout')} →
+          </button>
+        </div>
       </div>
 
       {deleteAccountDialog && (

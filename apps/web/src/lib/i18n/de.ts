@@ -61,6 +61,8 @@ const de = {
   // Auth
   login: 'Anmelden',
   loginTitle: 'Bitte anmelden',
+  loginWelcomeBack: 'Willkommen zurück',
+  loginSelfHosted: 'self-hosted',
   loginLoading: 'Anmelden...',
   loginWrongPassword: 'Falsches Passwort',
   loginInvalidCode: 'Ungültiger Code',
@@ -89,7 +91,14 @@ const de = {
   settingsAppearance: 'Erscheinungsbild',
   settingsTheme: 'Theme',
   settingsThemeToggle: 'Theme umschalten',
+  settingsThemeDark: 'Dunkel',
+  settingsThemeLight: 'Hell',
   settingsLanguage: 'Sprache',
+  settingsCategories: 'Kategorien',
+  settingsCategoriesManage: 'Alle Kategorien verwalten →',
+  settingsSharedAccounts: 'Geteilte Konten',
+  settingsSharedAccountsManage: 'Verwalten →',
+  settingsFooterLicense: 'MIT-Lizenz',
 
   // Settings - 2FA
   settings2faTitle: 'Zwei-Faktor-Authentifizierung (2FA)',
@@ -244,6 +253,11 @@ const de = {
   transactionsCancelSelect: 'Abbrechen',
   transactionsDeleteSelected: '{count} löschen',
   transactionsConfirmDeleteMultiple: '{count} Transaktionen wirklich löschen?',
+  transactionsAllAccounts: 'Alle Konten',
+  transactionsAllCategories: 'Alle Kategorien',
+  transactionsRecurringOnly: 'Wiederkehrend',
+  transactionsCount: '{count} Buchungen',
+  transactionsRecurringHint: 'wiederkehrend',
 
   // Recurring page
   recurringTitle: 'Daueraufträge',

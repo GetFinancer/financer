@@ -664,6 +664,42 @@ export default function Dashboard() {
     );
   }
 
+  function kpiTint(kind: 'amber' | 'positive' | 'negative' | 'neutral') {
+    switch (kind) {
+      case 'amber': return 'bg-primary/[0.08] border-primary/25';
+      case 'positive': return 'bg-income/[0.06] border-income/20';
+      case 'negative': return 'bg-expense/[0.06] border-expense/20';
+      default: return 'bg-white/5 border-white/[0.11]';
+    }
+  }
+
+  function accountKind(type?: string, balance?: number): 'positive' | 'negative' | 'neutral' {
+    if (type === 'credit' || (balance !== undefined && balance < 0)) return 'negative';
+    if (type === 'savings') return 'positive';
+    return 'neutral';
+  }
+
+  function ToggleRow({ checked, onChange, label }: { checked: boolean; onChange: (val: boolean) => void; label: string }) {
+    return (
+      <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
+        <span className={`text-xs truncate ${checked ? 'text-foreground' : 'text-muted-foreground/45'}`}>{label}</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className={`relative flex-shrink-0 w-[34px] h-[19px] rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-white/10'}`}
+        >
+          <span
+            className={`absolute top-[2px] w-[15px] h-[15px] rounded-full transition-all ${
+              checked ? 'right-[2px] bg-[#1a1206]' : 'left-[2px] bg-white/60'
+            }`}
+          />
+        </button>
+      </label>
+    );
+  }
+
   return (
     <>
       {confirmDialog && (
@@ -690,14 +726,14 @@ export default function Dashboard() {
           {/* Financial Overview Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-primary" />
-                <h2 className="text-lg font-semibold">{t('dashboardFinancialOverview')}</h2>
+              <div className="flex items-center gap-2.5">
+                <div className="w-1 h-5 rounded-sm bg-primary" />
+                <h2 className="text-lg font-bold tracking-tight">{t('dashboardFinancialOverview')}</h2>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowCardSettings(!showCardSettings)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-background-surface-hover rounded-md transition-colors"
+                  className="w-[34px] h-[34px] flex items-center justify-center rounded-[10px] bg-white/5 border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
                   title={t('dashboardToggleCards')}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -710,87 +746,59 @@ export default function Dashboard() {
                 {showCardSettings && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowCardSettings(false)} />
-                    <div className="absolute right-0 top-full mt-2 z-50 glass-card-elevated p-4 min-w-[220px] space-y-3">
-                      <p className="text-sm font-medium text-muted-foreground mb-2">{t('dashboardVisibleCards')}</p>
+                    <div className="absolute right-0 top-full mt-2 z-50 glass-card-elevated p-4 w-[300px] space-y-2.5">
+                      <p className="text-xs font-bold uppercase tracking-wide text-foreground mb-1">{t('dashboardVisibleCards')}</p>
 
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={cardVisibility.totalBalance}
-                          onChange={(e) => updateCardVisibility('totalBalance', e.target.checked)}
-                          className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">{t('dashboardTotalBalance')}</span>
-                      </label>
-
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={cardVisibility.monthlyIncome}
-                          onChange={(e) => updateCardVisibility('monthlyIncome', e.target.checked)}
-                          className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">{t('dashboardMonthlyIncome')}</span>
-                      </label>
-
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={cardVisibility.monthlyExpenses}
-                          onChange={(e) => updateCardVisibility('monthlyExpenses', e.target.checked)}
-                          className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">{t('dashboardMonthlyExpenses')}</span>
-                      </label>
-
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={cardVisibility.remainingBudget}
-                          onChange={(e) => updateCardVisibility('remainingBudget', e.target.checked)}
-                          className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">{t('dashboardRemaining')}</span>
-                      </label>
+                      <ToggleRow
+                        checked={cardVisibility.totalBalance}
+                        onChange={(val) => updateCardVisibility('totalBalance', val)}
+                        label={t('dashboardTotalBalance')}
+                      />
+                      <ToggleRow
+                        checked={cardVisibility.monthlyIncome}
+                        onChange={(val) => updateCardVisibility('monthlyIncome', val)}
+                        label={t('dashboardMonthlyIncome')}
+                      />
+                      <ToggleRow
+                        checked={cardVisibility.monthlyExpenses}
+                        onChange={(val) => updateCardVisibility('monthlyExpenses', val)}
+                        label={t('dashboardMonthlyExpenses')}
+                      />
+                      <ToggleRow
+                        checked={cardVisibility.remainingBudget}
+                        onChange={(val) => updateCardVisibility('remainingBudget', val)}
+                        label={t('dashboardRemaining')}
+                      />
 
                       {sharedAccounts.length > 0 && (
-                        <>
-                          <div className="border-t border-border pt-3 mt-3">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={includeSharedAccounts}
-                                onChange={(e) => updateIncludeShared(e.target.checked)}
-                                className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                              />
-                              <span className="text-sm">{t('dashboardIncludeShared')}</span>
-                            </label>
-                          </div>
-                        </>
+                        <div className="border-t border-white/10 pt-2.5 mt-2.5">
+                          <ToggleRow
+                            checked={includeSharedAccounts}
+                            onChange={updateIncludeShared}
+                            label={t('dashboardIncludeShared')}
+                          />
+                        </div>
                       )}
                       {summary.accounts.length > 0 && (
                         <>
-                          <div className="border-t border-border pt-3 mt-3">
-                            <p className="text-xs text-muted-foreground mb-2">{t('dashboardAccounts')}</p>
+                          <div className="border-t border-white/10 pt-2.5 mt-2.5">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mb-1.5">{t('dashboardAccounts')}</p>
                           </div>
                           {summary.accounts.map((account) => (
-                            <label key={account.id} className="flex items-center gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={cardVisibility[`account_${account.id}`] !== false}
-                                onChange={(e) => updateCardVisibility(`account_${account.id}`, e.target.checked)}
-                                className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary"
-                              />
-                              <span className="text-sm truncate">{account.name}</span>
-                            </label>
+                            <ToggleRow
+                              key={account.id}
+                              checked={cardVisibility[`account_${account.id}`] !== false}
+                              onChange={(val) => updateCardVisibility(`account_${account.id}`, val)}
+                              label={account.name}
+                            />
                           ))}
                         </>
                       )}
 
-                      <div className="border-t border-border pt-3 mt-3">
+                      <div className="border-t border-white/10 pt-2.5 mt-2.5">
                         <Link
                           href="/accounts"
-                          className="text-xs text-primary hover:underline"
+                          className="text-xs text-primary-hover hover:underline"
                           onClick={() => setShowCardSettings(false)}
                         >
                           {t('dashboardManageAccounts')}
@@ -804,43 +812,43 @@ export default function Dashboard() {
 
             {/* Unified Card Grid */}
             <div className="glass-card glass-card-amber overflow-hidden glow-amber p-5">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
               {cardVisibility.totalBalance && (
-                <div className="kpi-card">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                <div className={`kpi-card ${kpiTint('neutral')}`}>
+                  <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-2.5">
                     {t('dashboardTotalBalance')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                  <p className={`text-[22px] font-extrabold tracking-tight leading-none font-mono ${summary.totalBalance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                     {formatCurrency(summary.totalBalance, 'EUR', numberLocale)}
                   </p>
                 </div>
               )}
               {cardVisibility.monthlyIncome && (
-                <div className="kpi-card">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                <div className={`kpi-card ${kpiTint('positive')}`}>
+                  <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-2.5">
                     {t('dashboardMonthlyIncome')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-income">
+                  <p className="text-[22px] font-extrabold tracking-tight leading-none font-mono text-income">
                     {formatCurrency(summary.monthlyIncome, 'EUR', numberLocale)}
                   </p>
                 </div>
               )}
               {cardVisibility.monthlyExpenses && (
-                <div className="kpi-card">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                <div className={`kpi-card ${kpiTint('negative')}`}>
+                  <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-2.5">
                     {t('dashboardMonthlyExpenses')}
                   </p>
-                  <p className="text-2xl font-semibold tracking-tight leading-none font-mono text-expense">
+                  <p className="text-[22px] font-extrabold tracking-tight leading-none font-mono text-expense">
                     {formatCurrency(summary.monthlyExpenses, 'EUR', numberLocale)}
                   </p>
                 </div>
               )}
               {cardVisibility.remainingBudget && (
-                <div className="kpi-card">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                <div className={`kpi-card ${kpiTint('amber')}`}>
+                  <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-2.5">
                     {t('dashboardRemaining')}
                   </p>
-                  <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${remainingBudget >= 0 ? 'text-income' : 'text-expense'}`}>
+                  <p className={`text-[22px] font-extrabold tracking-tight leading-none font-mono ${remainingBudget >= 0 ? 'text-primary-hover' : 'text-expense'}`}>
                     {formatCurrency(remainingBudget, 'EUR', numberLocale)}
                   </p>
                 </div>
@@ -848,14 +856,18 @@ export default function Dashboard() {
               {summary.accounts
                 .filter((account) => cardVisibility[`account_${account.id}`] !== false)
                 .map((account) => (
-                  <div key={account.id} className="kpi-card">
-                    <div className="flex items-center gap-1.5 mb-3">
+                  <div key={account.id} className={`kpi-card ${kpiTint(accountKind(account.type, account.balance))}`}>
+                    <div className="flex items-center gap-1.5 mb-2.5">
                       <AccountTypeIcon type={account.type} shared={sharedAccountIds.has(account.id)} className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+                      <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider truncate">
                         {account.name}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${account.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-[22px] font-extrabold tracking-tight leading-none font-mono ${
+                      accountKind(account.type, account.balance) === 'negative' ? 'text-expense' :
+                      accountKind(account.type, account.balance) === 'positive' ? 'text-income' :
+                      'text-foreground'
+                    }`}>
                       {formatCurrency(account.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
@@ -864,14 +876,14 @@ export default function Dashboard() {
               {includeSharedAccounts && sharedAccounts
                 .filter(sa => !sa.isOwner)
                 .map(sa => (
-                  <div key={sa.uuid} className="kpi-card">
-                    <div className="flex items-center gap-1.5 mb-3">
+                  <div key={sa.uuid} className={`kpi-card ${kpiTint(sa.balance < 0 ? 'negative' : 'neutral')}`}>
+                    <div className="flex items-center gap-1.5 mb-2.5">
                       <AccountTypeIcon shared className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+                      <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider truncate">
                         {sa.accountName}
                       </p>
                     </div>
-                    <p className={`text-2xl font-semibold tracking-tight leading-none font-mono ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
+                    <p className={`text-[22px] font-extrabold tracking-tight leading-none font-mono ${sa.balance >= 0 ? 'text-foreground' : 'text-expense'}`}>
                       {formatCurrency(sa.balance, 'EUR', numberLocale)}
                     </p>
                   </div>
@@ -902,11 +914,11 @@ export default function Dashboard() {
           <div className="glass-card glass-card-blue overflow-hidden glow-blue">
             {/* Section Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-primary" />
-                <h2 className="text-lg font-semibold">{t('dashboardPlannedTransactions')}</h2>
+              <div className="flex items-center gap-2.5">
+                <div className="w-1 h-4 rounded-sm bg-primary" />
+                <h2 className="text-base font-bold tracking-tight">{t('dashboardPlannedTransactions')}</h2>
               </div>
-              <Link href="/recurring" className="text-sm text-primary hover:underline">
+              <Link href="/recurring" className="text-sm text-primary-hover hover:underline">
                 {t('dashboardManageRecurring')}
               </Link>
             </div>
@@ -1083,7 +1095,7 @@ export default function Dashboard() {
                         <div key={`cc-${bill.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${bill.completed ? 'opacity-60' : ''}`}>
                           <button
                             onClick={() => handleToggleCreditCardBill(bill.id)}
-                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
                               bill.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
                             }`}
                           >
@@ -1120,7 +1132,7 @@ export default function Dashboard() {
                         <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
                           <button
                             onClick={() => handleToggleInstance(instance.id)}
-                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
                               instance.completed ? 'bg-income text-white' : 'bg-expense/20 text-expense hover:bg-expense/30'
                             }`}
                           >
@@ -1223,7 +1235,7 @@ export default function Dashboard() {
                         <div key={`ri-${instance.id}`} className={`p-3 flex items-center gap-3 hover:bg-background-surface-hover transition-colors ${instance.completed ? 'opacity-60' : ''}`}>
                           <button
                             onClick={() => handleToggleInstance(instance.id)}
-                            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 font-semibold text-sm transition-colors ${
                               instance.completed ? 'bg-income text-white' : 'bg-income/20 text-income hover:bg-income/30'
                             }`}
                           >
@@ -1372,22 +1384,22 @@ export default function Dashboard() {
           <section>
             <div className="glass-card glass-card-purple overflow-hidden glow-purple">
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-5 rounded-full bg-secondary" />
-                  <h2 className="text-lg font-semibold">{t('dashboardRecentTransactions')}</h2>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-4 rounded-sm bg-primary" />
+                  <h2 className="text-base font-bold tracking-tight">{t('dashboardRecentTransactions')}</h2>
                 </div>
                 <div className="flex items-center gap-3">
                   <select
                     value={transactionLimit}
                     onChange={(e) => setTransactionLimit(Number(e.target.value))}
-                    className="text-xs text-muted-foreground rounded border border-border/50 bg-transparent px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                    className="text-xs text-muted-foreground rounded-full border border-white/10 bg-white/5 px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                   >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                   </select>
-                  <Link href="/transactions" className="text-sm text-primary hover:underline">
+                  <Link href="/transactions" className="text-sm text-primary-hover hover:underline">
                     {t('dashboardShowAll')}
                   </Link>
                 </div>
@@ -1409,7 +1421,7 @@ export default function Dashboard() {
                     {/* Icon */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                       transaction.type === 'income' ? 'bg-income/20 text-income' :
-                      transaction.type === 'transfer' ? 'bg-primary/20 text-primary' :
+                      transaction.type === 'transfer' ? 'bg-[hsl(213,94%,60%)]/[0.18] text-[hsl(213,94%,78%)]' :
                       'bg-expense/20 text-expense'
                     }`}>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1452,7 +1464,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <p className={`font-semibold whitespace-nowrap font-mono ${
                         transaction.type === 'income' ? 'text-income' :
-                        transaction.type === 'transfer' ? 'text-primary' :
+                        transaction.type === 'transfer' ? 'text-[hsl(213,94%,78%)]' :
                         'text-expense'
                       }`}>
                         {transaction.type === 'income' ? '+' : transaction.type === 'transfer' ? '' : '-'}{formatCurrency(transaction.amount, 'EUR', numberLocale)}
@@ -1524,7 +1536,7 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{t('dashboardAmountForDate')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('dashboardAmountForDate')}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1540,7 +1552,7 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{t('dashboardNoteOptional')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('dashboardNoteOptional')}</label>
                 <input
                   type="text"
                   value={editNote}
@@ -1622,21 +1634,17 @@ export default function Dashboard() {
             <form onSubmit={handleSaveTransaction} className="space-y-4 min-w-0">
               {/* Type Buttons */}
               <div>
-                <label className="block text-sm font-medium mb-2">{t('txType')}</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txType')}</label>
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-[11px] bg-white/[0.06]">
                   {(['expense', 'income', 'transfer'] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setTxFormData({ ...txFormData, type, categoryId: '' })}
-                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                         txFormData.type === type
-                          ? type === 'expense'
-                            ? 'bg-expense text-white'
-                            : type === 'income'
-                            ? 'bg-income text-white'
-                            : 'bg-primary text-primary-foreground'
-                          : 'bg-background border border-border hover:bg-background-surface-hover'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {type === 'expense' ? t('typeExpense') : type === 'income' ? t('typeIncome') : t('typeTransfer')}
@@ -1647,7 +1655,7 @@ export default function Dashboard() {
 
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium mb-2">{t('txAmount')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txAmount')}</label>
                 <div className="relative">
                   <input
                     ref={txAmountInputRef}
@@ -1657,12 +1665,12 @@ export default function Dashboard() {
                     inputMode="decimal"
                     value={txFormData.amount}
                     onChange={(e) => setTxFormData({ ...txFormData, amount: e.target.value })}
-                    className="w-full px-4 py-4 text-2xl font-semibold rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                    className="w-full px-2 py-3 text-4xl font-extrabold bg-transparent border-0 border-b-2 border-primary/40 focus:border-primary focus:outline-none text-center font-mono placeholder:text-muted-foreground/30 transition-colors"
                     placeholder="0,00"
                     required
                     autoFocus
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl text-muted-foreground">
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xl text-muted-foreground">
                     €
                   </span>
                 </div>
@@ -1670,11 +1678,11 @@ export default function Dashboard() {
 
               {/* Account */}
               <div>
-                <label className="block text-sm font-medium mb-2">{t('txAccount')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txAccount')}</label>
                 <select
                   value={txFormData.accountId}
                   onChange={(e) => setTxFormData({ ...txFormData, accountId: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3.5 py-2.5 rounded-[10px] border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60"
                   required
                 >
                   <option value="">{t('txSelectAccount')}</option>
@@ -1697,12 +1705,12 @@ export default function Dashboard() {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium mb-2">{t('txDescription')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txDescription')}</label>
                 <input
                   type="text"
                   value={txFormData.description}
                   onChange={(e) => handleTxDescriptionChange(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3.5 py-2.5 rounded-[10px] border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60"
                   placeholder={t('optional')}
                 />
                 {/* Smart category / recurring suggestions */}
@@ -1779,11 +1787,11 @@ export default function Dashboard() {
               {/* Category */}
               {txFormData.type !== 'transfer' && (
                 <div>
-                  <label className="block text-sm font-medium mb-2">{t('txCategory')}</label>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txCategory')}</label>
                   <select
                     value={txFormData.categoryId}
                     onChange={(e) => setTxFormData({ ...txFormData, categoryId: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 rounded-[10px] border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60"
                   >
                     <option value="">{t('txNoCategory')}</option>
                     {hierarchicalTxCategories.map(({ category, isChild }) => (
@@ -1798,11 +1806,11 @@ export default function Dashboard() {
               {/* Transfer Target Account */}
               {txFormData.type === 'transfer' && (
                 <div>
-                  <label className="block text-sm font-medium mb-2">{t('txTargetAccount')}</label>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txTargetAccount')}</label>
                   <select
                     value={txFormData.transferToAccountId}
                     onChange={(e) => setTxFormData({ ...txFormData, transferToAccountId: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3.5 py-2.5 rounded-[10px] border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60"
                     required
                   >
                     <option value="">{t('txSelectTargetAccount')}</option>
@@ -1819,12 +1827,12 @@ export default function Dashboard() {
 
               {/* Date */}
               <div className="min-w-0">
-                <label className="block text-sm font-medium mb-2">{t('txDate')}</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-2">{t('txDate')}</label>
                 <input
                   type="date"
                   value={txFormData.date}
                   onChange={(e) => setTxFormData({ ...txFormData, date: e.target.value })}
-                  className="w-full max-w-full min-w-0 px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full max-w-full min-w-0 px-3.5 py-2.5 rounded-[10px] border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60"
                   required
                 />
               </div>

@@ -141,7 +141,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen app-bg-glow">
         {/* Mobile Header */}
         <Header />
 
