@@ -689,11 +689,11 @@ export default function Dashboard() {
           role="switch"
           aria-checked={checked}
           onClick={() => onChange(!checked)}
-          className={`relative flex-shrink-0 w-[34px] h-[19px] rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-white/10'}`}
+          className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-white/10'}`}
         >
           <span
-            className={`absolute top-[2px] w-[15px] h-[15px] rounded-full transition-all ${
-              checked ? 'right-[2px] bg-[#1a1206]' : 'left-[2px] bg-white/60'
+            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform ${
+              checked ? 'translate-x-4 bg-[#1a1206]' : 'translate-x-0 bg-white/60'
             }`}
           />
         </button>
