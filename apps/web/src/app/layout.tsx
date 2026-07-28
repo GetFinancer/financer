@@ -36,6 +36,10 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  // Lets fixed-position UI reach into the safe-area insets (notch/status bar)
+  // so env(safe-area-inset-*) padding actually has a non-zero value to use —
+  // needed inside the native app's edge-to-edge WKWebView.
+  viewportFit: 'cover',
 };
 
 // Script to prevent flash of wrong theme
