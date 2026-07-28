@@ -66,3 +66,13 @@ npx @capacitor/assets generate
 ## Signing
 
 App Store und Play Store Signing (Apple Developer Account, Provisioning Profiles, Android Keystore) ist Aufgabe des Nutzers/Betreibers und nicht Teil dieses Scaffolds.
+
+# Alle Simulator-Testdaten löschen (Apps, Login-Sessions, Fotos etc. im Simulator)
+xcrun simctl shutdown all
+xcrun simctl erase all
+
+# Nicht mehr unterstützte/ungenutzte Simulator-Geräte komplett entfernen
+xcrun simctl delete unavailable
+
+# Xcode Build-Cache (unkritisch, wird beim nächsten Build neu erzeugt)
+rm -rf ~/Library/Developer/Xcode/DerivedData/*
