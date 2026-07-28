@@ -49,6 +49,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 <string>Financer benötigt Kamerazugriff, um Belege zu fotografieren.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Financer benötigt Zugriff auf deine Fotobibliothek, um Belege als Bild auszuwählen.</string>
 <key>NSFaceIDUsageDescription</key>
 <string>Financer nutzt Face ID, um dein Konto schnell und sicher zu entsperren.</string>
 </dict>
