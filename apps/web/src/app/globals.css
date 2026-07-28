@@ -527,6 +527,25 @@
   .safe-area-top {
     padding-top: env(safe-area-inset-top, 0px);
   }
+
+  /* Fixed fade over the status-bar area — on iOS the WKWebView bounces the
+     whole scrollable page (including the sticky header) on overscroll,
+     briefly revealing whatever sits above it. This fades that sliver out
+     instead of showing it at full opacity. */
+  .top-fade {
+    height: calc(env(safe-area-inset-top, 0px) + 16px);
+    background: linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 100%);
+  }
+
+  /* Locks the document itself from scrolling/bouncing — AppShell moves the
+     actual scrolling into an inner container instead, so fixed elements
+     (header, bottom nav) never shift during the iOS elastic overscroll. */
+  html.app-shell-scroll-lock,
+  body.app-shell-scroll-lock {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }
 
 /* Mobile touch optimizations */

@@ -12,7 +12,7 @@ export function Header() {
   const isSettingsPage = pathname === '/settings';
 
   return (
-    <header className="sticky top-0 z-50 glass-nav border-b sidebar:hidden">
+    <header className="sticky top-0 z-50 glass-nav border-b sidebar:hidden safe-area-top">
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center">
