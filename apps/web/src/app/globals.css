@@ -542,7 +542,7 @@
 @layer base {
   /* Larger touch targets on mobile */
   @media (max-width: 768px) {
-    button,
+    button:not([role="switch"]),
     a,
     input,
     select,
