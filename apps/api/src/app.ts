@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import session from 'express-session';
+import FileStoreFactory from 'session-file-store';
+import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { authRouter } from './routes/auth.js';
 import { accountsRouter } from './routes/accounts.js';
@@ -93,7 +95,19 @@ export function createApp(options?: { skipRateLimit?: boolean; skipTenant?: bool
   }
 
   // Session configuration
+  const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+  const FileStore = FileStoreFactory(session);
+
   app.use(session({
+    // The default MemoryStore loses every session on process restart, which
+    // forces a fresh login for everyone after each deploy — persist to disk
+    // instead, next to the per-tenant SQLite files.
+    store: new FileStore({
+      path: path.join(dataDir, '_sessions'),
+      ttl: 7 * 24 * 60 * 60, // seconds, matches cookie maxAge below
+      reapInterval: 60 * 60, // purge expired session files hourly
+      logFn: () => {}, // silence its default console logging
+    }),
     secret: process.env.SESSION_SECRET || 'change-me-in-production',
     resave: false,
     saveUninitialized: false,
