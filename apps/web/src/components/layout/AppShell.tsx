@@ -53,20 +53,6 @@ export function AppShell({ children }: AppShellProps) {
 
   const isAuthPage = authPages.includes(pathname);
 
-  // Confine scrolling to the inner content container instead of letting the
-  // whole document (and with it the WKWebView) bounce on iOS — an elastic
-  // overscroll of the document is what makes the sticky header and the
-  // fixed bottom nav appear to shift/reveal content above them.
-  useEffect(() => {
-    if (isAuthPage) return;
-    document.documentElement.classList.add('app-shell-scroll-lock');
-    document.body.classList.add('app-shell-scroll-lock');
-    return () => {
-      document.documentElement.classList.remove('app-shell-scroll-lock');
-      document.body.classList.remove('app-shell-scroll-lock');
-    };
-  }, [isAuthPage]);
-
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -157,7 +143,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <LanguageProvider>
       <BiometricLock>
-      <div className="h-dvh flex flex-col app-bg-glow">
+      <div className="min-h-screen app-bg-glow">
         {/* Fades content that peeks through above the header during iOS overscroll bounce */}
         <div className="fixed top-0 left-0 right-0 z-[60] pointer-events-none sidebar:hidden top-fade" />
 
@@ -177,22 +163,20 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
 
-        {/* Scrollable content area — the only element that actually scrolls/bounces */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
-          <main
-            className={`
-              transition-all duration-300
-              px-4 py-6 pb-24
-              sidebar:pb-8 sidebar:px-6 sidebar:px-8
-              sidebar:pt-24
-              ${sidebarOpen ? 'sidebar:pl-72' : 'sidebar:pl-24'}
-            `}
-          >
-            <div key={pathname} className="animate-page-in max-w-screen-xl mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+        {/* Main Content */}
+        <main
+          className={`
+            transition-all duration-300
+            px-4 py-6 pb-24
+            sidebar:pb-8 sidebar:px-6 sidebar:px-8
+            sidebar:pt-24
+            ${sidebarOpen ? 'sidebar:pl-72' : 'sidebar:pl-24'}
+          `}
+        >
+          <div key={pathname} className="animate-page-in max-w-screen-xl mx-auto">
+            {children}
+          </div>
+        </main>
 
         {/* Mobile Bottom Navigation */}
         <BottomNav />

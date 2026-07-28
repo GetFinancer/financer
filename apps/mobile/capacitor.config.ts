@@ -23,6 +23,10 @@ const config: CapacitorConfig = {
     // By default the WKWebView renders edge-to-edge under the status bar.
     // "automatic" makes iOS inset the page content below the status bar/notch
     // itself, instead of the app's own top UI being drawn underneath it.
+    // (Tried "never" to stop the native scroll-view bounce that shifted the
+    // header/bottom nav — but that also breaks env(safe-area-inset-*), so the
+    // header ends up flush under the status bar. Bounce is instead disabled
+    // natively in ViewController.swift, see there.)
     contentInset: 'automatic',
   },
   plugins: {

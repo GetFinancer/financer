@@ -536,16 +536,6 @@
     height: calc(env(safe-area-inset-top, 0px) + 16px);
     background: linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 100%);
   }
-
-  /* Locks the document itself from scrolling/bouncing — AppShell moves the
-     actual scrolling into an inner container instead, so fixed elements
-     (header, bottom nav) never shift during the iOS elastic overscroll. */
-  html.app-shell-scroll-lock,
-  body.app-shell-scroll-lock {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
 }
 
 /* Mobile touch optimizations */
