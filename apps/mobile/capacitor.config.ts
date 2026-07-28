@@ -20,14 +20,14 @@ const config: CapacitorConfig = {
     allowNavigation: ['*.getfinancer.com', 'getfinancer.com'],
   },
   ios: {
-    // By default the WKWebView renders edge-to-edge under the status bar.
-    // "automatic" makes iOS inset the page content below the status bar/notch
-    // itself, instead of the app's own top UI being drawn underneath it.
-    // (Tried "never" to stop the native scroll-view bounce that shifted the
-    // header/bottom nav — but that also breaks env(safe-area-inset-*), so the
-    // header ends up flush under the status bar. Bounce is instead disabled
-    // natively in ViewController.swift, see there.)
-    contentInset: 'automatic',
+    // "never": the WKWebView renders edge-to-edge and does NOT add its own
+    // native content inset for the status bar/notch. Safe-area insetting is
+    // instead handled entirely on the CSS side via env(safe-area-inset-*)
+    // (viewportFit: 'cover' in layout.tsx + the safe-area-top/bottom classes
+    // and fixed header/bottom nav). Using "automatic" here as well double-
+    // applies the inset (native inset + CSS padding stacked), which showed up
+    // as an oversized header on first paint until the first scroll event.
+    contentInset: 'never',
   },
   plugins: {
     SplashScreen: {
