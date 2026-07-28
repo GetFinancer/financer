@@ -167,7 +167,8 @@ export function AppShell({ children }: AppShellProps) {
         <main
           className={`
             transition-all duration-300
-            px-4 py-6 pb-24
+            px-4 pb-24
+            pt-[calc(env(safe-area-inset-top,0px)+5rem)]
             sidebar:pb-8 sidebar:px-6 sidebar:px-8
             sidebar:pt-24
             ${sidebarOpen ? 'sidebar:pl-72' : 'sidebar:pl-24'}
